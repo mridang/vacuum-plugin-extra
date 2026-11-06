@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"cmp"
 	"slices"
 	"strings"
 
@@ -132,9 +133,8 @@ func checkSecurityScopesDeclared(call *Call) []Finding {
 				return Finding{
 					Node: entry.name,
 					Path: oas.JoinAll("$.components.securitySchemes", entry.name.Value),
-					Message: "security scheme '" + entry.name.Value + "' of type " + oas.StringAt(
+					Message: "security scheme '" + entry.name.Value + "' of type " + securityScopesDeclaredTypeName(
 						entry.scheme,
-						"type",
 					) + " is not allowed, use " + wanted,
 				}
 			})
@@ -148,6 +148,12 @@ func checkSecurityScopesDeclared(call *Call) []Finding {
 		}),
 		securityScopesDeclaredUndeclared(call, entries),
 	)
+}
+
+// securityScopesDeclaredTypeName names the type of a scheme for a message, and
+// says so when the scheme declares none.
+func securityScopesDeclaredTypeName(scheme *yaml.Node) string {
+	return cmp.Or(oas.StringAt(scheme, "type"), "(none)")
 }
 
 // securityScopesDeclaredKind reports whether the scheme is of an allowed kind.
