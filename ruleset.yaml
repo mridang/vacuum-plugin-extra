@@ -884,6 +884,7 @@ rules:
     then:
       function: extra-oauth2-scope-name-pattern
       functionOptions:
+        allowExplicitPublic: true
         allowed: []
         pathWhitelist: []
         pattern: ^(uid)|(([a-z-]+\.){1,2}(read|write))$

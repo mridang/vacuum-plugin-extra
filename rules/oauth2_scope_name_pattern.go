@@ -22,6 +22,8 @@ const (
 	oauth2ScopeNamePatternAllowed = "allowed"
 	// oauth2ScopeNamePatternWhitelist is the option with the paths exempt from the scope check.
 	oauth2ScopeNamePatternWhitelist = "pathWhitelist"
+	// oauth2ScopeNamePatternPublic is the option that exempts operations declared public.
+	oauth2ScopeNamePatternPublic = "allowExplicitPublic"
 	// oauth2ScopeNamePatternDefault is the scope_regex of the original rule. It
 	// is matched against the whole scope name.
 	oauth2ScopeNamePatternDefault = `^(uid)|(([a-z-]+\.){1,2}(read|write))$`
@@ -77,6 +79,9 @@ const (
 //   - pathWhitelist (list of strings, default empty): regular expressions; an
 //     operation whose route contains a match is not checked for scopes. An
 //     invalid expression is ignored.
+//   - allowExplicitPublic (bool, default true): do not report an operation that
+//     sets security: [] itself. Set it to false to require scopes on those
+//     operations too, as the original Zally rule does.
 //
 // # Bad
 //
@@ -132,6 +137,11 @@ func OAuth2ScopeNamePattern() Rule {
 				Name:        oauth2ScopeNamePatternWhitelist,
 				Description: "Regular expressions of routes that are not checked for scopes.",
 				Default:     []string{},
+			},
+			{
+				Name:        oauth2ScopeNamePatternPublic,
+				Description: "Skip operations that declare an empty security array, which marks them as public.",
+				Default:     true,
 			},
 		},
 		Check: Concat(OnDocument(oauth2ScopeNamePatternNames), OnDocument(oauth2ScopeNamePatternEndpoints)),
@@ -222,8 +232,20 @@ func oauth2ScopeNamePatternEndpoints(call *Call) []Finding {
 			return nil
 		}
 
+		if call.Bool(oauth2ScopeNamePatternPublic) && oauth2ScopeNamePatternExplicitlyPublic(operation) {
+			return nil
+		}
+
 		return oauth2ScopeNamePatternOperation(call.Root, schemes, operation)
 	})
+}
+
+// oauth2ScopeNamePatternExplicitlyPublic reports whether the operation sets an
+// empty security array of its own, which OpenAPI defines as "no security".
+func oauth2ScopeNamePatternExplicitlyPublic(operation oas.Operation) bool {
+	key, value := oas.Entry(operation.Node, "security")
+
+	return key != nil && oas.IsSeq(value) && oas.Empty(value)
 }
 
 // oauth2ScopeNamePatternCompileAll compiles the valid expressions of a list.
