@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /a:
+    get:
+      responses:
+        "301":
+          description: moved
+        default:
+          description: error
+  /b:
+    get:
+      summary: no responses

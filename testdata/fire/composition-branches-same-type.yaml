@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Id:
+      oneOf:
+        - type: string
+        - type: integer

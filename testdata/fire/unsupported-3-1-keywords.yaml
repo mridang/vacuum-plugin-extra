@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+webhooks:
+  newPet:
+    post:
+      responses:
+        "200":
+          description: ok

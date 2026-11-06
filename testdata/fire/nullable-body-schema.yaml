@@ -1,0 +1,11 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  requestBodies:
+    Pet:
+      content:
+        application/json:
+          schema:
+            type: [object, "null"]

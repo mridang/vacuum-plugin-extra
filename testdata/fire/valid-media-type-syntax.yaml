@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          json:
+            schema: { type: object }
+          appliation/json:
+            schema: { type: object }
+          application/:
+            schema: { type: object }
+          application/json; charset=utf-8:
+            schema: { type: object }
+      responses:
+        "200":
+          description: ok
+          content:
+            nonsense:
+              schema: { type: object }
+components:
+  requestBodies:
+    Body:
+      content:
+        text:
+          schema: { type: string }

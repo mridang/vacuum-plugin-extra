@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Tag:
+      type: string
+      items:
+        type: string
+    Pet:
+      properties:
+        name: { type: string }

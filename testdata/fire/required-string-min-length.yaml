@@ -1,0 +1,12 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name, ghost]
+      properties:
+        name:
+          type: [string, "null"]

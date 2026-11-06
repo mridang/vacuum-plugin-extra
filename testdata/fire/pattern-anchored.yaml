@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Both:
+      type: string
+      pattern: "[A-Z]{3}"
+    NoStart:
+      type: string
+      pattern: "[A-Z]{3}$"
+    NoEnd:
+      type: string
+      pattern: "^[A-Z]{3}"

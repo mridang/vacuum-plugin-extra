@@ -1,0 +1,16 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  securitySchemes:
+    key:
+      type: apiKey
+      name: X-Key
+      in: header
+    bearer:
+      type: http
+      scheme: Bearer
+    basic:
+      type: http
+      scheme: basic

@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nested: { type: string }
+      responses:
+        "200":
+          description: ok

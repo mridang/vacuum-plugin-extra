@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    put:
+      parameters:
+        - name: X-Other
+          in: header
+          schema:
+            type: string
+      responses:
+        "412":
+          description: precondition failed

@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  examples:
+    Both:
+      value: 1
+      externalValue: https://example.org/1.json
+    Neither:
+      summary: none

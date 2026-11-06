@@ -1,0 +1,36 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /things:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThingCollection"
+components:
+  schemas:
+    ThingCollection:
+      type: object
+      properties:
+        things:
+          type: array
+          items:
+            $ref: "#/components/schemas/Thing"
+        status:
+          type: string
+          enum: [on, off]
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string

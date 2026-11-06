@@ -1,0 +1,14 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      responses:
+        "422":
+          description: invalid
+    put:
+      responses:
+        "422":
+          description: invalid

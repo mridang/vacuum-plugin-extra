@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThingSummary"
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ThingSummary:
+      type: object
+      properties:
+        id: { type: string }

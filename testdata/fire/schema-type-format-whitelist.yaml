@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Count:
+      type: int
+    When:
+      type: string
+      format: datetime
+    Big:
+      type: integer
+      format: int128
+    Flag:
+      type: boolean
+      format: yesno

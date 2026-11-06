@@ -1,0 +1,19 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  callbacks:
+    onEvent:
+      "{$request.body#/url}":
+        post:
+          callbacks:
+            onAck:
+              "{$request.body#/ack}":
+                post:
+                  responses:
+                    "200":
+                      description: ok
+          responses:
+            "200":
+              description: ok

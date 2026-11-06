@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - name: limit
+          in: query
+          required: true
+          schema: { type: integer, default: 10 }
+        - name: flag
+          in: query
+          required: true
+          schema: { type: boolean, default: false }
+        - name: ref
+          in: query
+          required: true
+          schema: { $ref: "#/components/schemas/Limit" }
+        - name: optional
+          in: query
+          schema: { type: integer, default: 1 }
+      responses:
+        "200":
+          description: ok
+components:
+  schemas:
+    Limit: { type: integer, default: 5 }
+  parameters:
+    Shared:
+      name: shared
+      in: query
+      required: true
+      schema: { type: string, default: x }

@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - name: link
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok
+          headers:
+            Link:
+              schema:
+                type: string

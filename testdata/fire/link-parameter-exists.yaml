@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    get:
+      operationId: getPet
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: id, in: query, schema: { type: string } }
+        - { name: fields, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: ok
+  /owners:
+    get:
+      responses:
+        "200":
+          description: ok
+          links:
+            pet:
+              operationRef: "#/paths/~1pets~1%7Bid%7D/get"
+              parameters:
+                nope: x

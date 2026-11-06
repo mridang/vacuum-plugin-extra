@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+servers:
+  - url: https://{region}.example.com
+    variables:
+      region:
+        default: eu
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok

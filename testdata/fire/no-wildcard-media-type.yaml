@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          "*/*":
+            schema: { type: object }
+      responses:
+        "200":
+          description: ok
+          content:
+            "*/*":
+              schema: { type: object }
+            image/*:
+              schema: { type: string }
+components:
+  requestBodies:
+    Body:
+      content:
+        "*/*": {}

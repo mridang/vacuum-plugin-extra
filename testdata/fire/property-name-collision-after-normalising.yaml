@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        thingType: { type: string }
+        thing_type: { type: string }
+        Thing-Type: { type: string }
+        other: { type: string }

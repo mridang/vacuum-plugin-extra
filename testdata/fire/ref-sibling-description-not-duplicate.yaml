@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Name:
+      type: string
+      description: The name   of the pet.
+
+    Pet:
+      type: object
+      properties:
+        name:
+          description: The name of the pet.
+          allOf:
+            - $ref: "#/components/schemas/Name"

@@ -1,0 +1,17 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    ID:
+      type: string
+    Pet:
+      type: object
+    PetStore2:
+      type: object
+    pet:
+      type: object
+    Pet_Store:
+      type: object

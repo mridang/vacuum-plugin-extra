@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        owner:
+          type: object
+          properties:
+            id: { type: string }
+    PetPatch:
+      type: object
+      properties:
+        owner:
+          type: object
+          properties:
+            phone: { type: string }

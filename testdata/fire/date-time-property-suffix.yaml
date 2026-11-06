@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Stamp:
+      type: string
+      format: date-time
+    Pet:
+      type: object
+      properties:
+        created:
+          $ref: "#/components/schemas/Stamp"

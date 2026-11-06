@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      operationId: list.pets
+      responses:
+        "200":
+          description: ok
+    post:
+      operationId: create-pet
+      responses:
+        "201":
+          description: ok

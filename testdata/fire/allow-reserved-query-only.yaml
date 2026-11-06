@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          allowReserved: true
+          schema:
+            type: string
+        - name: X-Trace
+          in: header
+          allowReserved: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok

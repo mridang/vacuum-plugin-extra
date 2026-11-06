@@ -1,0 +1,34 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /things:
+    get:
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [first, next]
+                properties:
+                  things:
+                    type: array
+                    items:
+                      type: string
+                  first: {
+                    type: object,
+                    properties: { href: { type: string } },
+                  }
+                  next: { type: object, properties: { href: { type: string } } }
+                  last: { type: object, properties: { href: { type: string } } }
+                  previous: {
+                    type: object,
+                    properties: { href: { type: string } },
+                  }

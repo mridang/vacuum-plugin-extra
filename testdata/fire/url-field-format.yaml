@@ -1,0 +1,42 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+  termsOfService: not a url
+  contact:
+    url: example.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+externalDocs:
+  url: /docs
+servers:
+  - url: "https://bad host.example.com"
+tags:
+  - name: pets
+    externalDocs:
+      url: docs/pets
+paths:
+  /pets:
+    get:
+      externalDocs:
+        url: ":bad"
+      responses:
+        "200":
+          description: ok
+components:
+  securitySchemes:
+    oidc:
+      type: openIdConnect
+      openIdConnectUrl: relative/path
+    oauth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: "https://exa mple.com/auth"
+          scopes: {}
+  schemas:
+    Pet:
+      type: object
+      xml:
+        namespace: pets

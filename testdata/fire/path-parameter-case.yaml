@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{petId}:
+    get:
+      responses:
+        "200":
+          description: ok
+  /owners/{owner_id}/pets/{pet_id}:
+    get:
+      responses:
+        "200":
+          description: ok
+  /tags:
+    get:
+      responses:
+        "200":
+          description: ok

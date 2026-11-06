@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /repos/{repo}:
+    get:
+      responses:
+        "200":
+          description: ok
+  /orgs/{org}/repos/{repo}:
+    get:
+      responses:
+        "200":
+          description: ok
+  /a/{a}/b/{b}/c/{c}:
+    get:
+      responses:
+        "200":
+          description: ok

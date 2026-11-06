@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - name: p0
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p1
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p2
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p3
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p4
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p5
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p6
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p7
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p8
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p9
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p10
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p11
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p12
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p13
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p14
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: p15
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok

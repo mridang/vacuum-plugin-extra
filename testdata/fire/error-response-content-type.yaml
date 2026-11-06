@@ -1,0 +1,26 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            text/plain:
+              schema:
+                type: string
+        "404":
+          description: not found
+          content:
+            text/plain:
+              schema:
+                type: string
+        4XX:
+          description: client error
+          content:
+            application/xml:
+              schema:
+                type: string

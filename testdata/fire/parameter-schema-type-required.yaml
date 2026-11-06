@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    parameters:
+      - name: trace
+        in: header
+        content:
+          text/plain:
+            schema:
+              type: string
+    get:
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            minimum: 1
+        - name: offset
+          in: query
+      responses:
+        "200":
+          description: ok

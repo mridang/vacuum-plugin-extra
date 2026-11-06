@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Kind:
+      type: string
+      const: cat
+    List:
+      type: array
+      prefixItems:
+        - type: string

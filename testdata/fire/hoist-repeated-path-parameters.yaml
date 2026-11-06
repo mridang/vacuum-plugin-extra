@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    get:
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: ok
+    delete:
+      parameters:
+        - schema: { type: string }
+          required: true
+          in: path
+          name: id
+      responses:
+        "204":
+          description: gone

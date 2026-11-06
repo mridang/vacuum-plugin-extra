@@ -1,0 +1,13 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        age: { type: string, format: int32 }
+        born: { type: integer, format: date-time }
+        weight: { type: number, format: double }
+        ok: { type: integer, format: int64 }

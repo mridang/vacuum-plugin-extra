@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /things:
+    get:
+      responses:
+        "200":
+          description: ok
+        "302":
+          description: moved
+          content:
+            text/plain: {}
+        "422":
+          description: invalid

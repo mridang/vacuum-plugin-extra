@@ -1,0 +1,28 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    parameters:
+      - name: ownerId
+        in: query
+        schema:
+          type: string
+    get:
+      parameters:
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+        - $ref: "#/components/parameters/SortBy"
+      responses:
+        "200":
+          description: ok
+components:
+  parameters:
+    SortBy:
+      name: sortBy
+      in: query
+      schema:
+        type: string

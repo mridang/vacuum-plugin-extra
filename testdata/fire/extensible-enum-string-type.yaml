@@ -1,0 +1,14 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Colour:
+      type: integer
+      x-extensible-enum: [1, 2]
+    Pet:
+      type: object
+      properties:
+        kind:
+          x-extensible-enum: [cat, dog]

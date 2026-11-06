@@ -1,0 +1,38 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      responses:
+        "405":
+          description: not allowed
+    put:
+      responses:
+        "405":
+          description: not allowed
+    post:
+      responses:
+        "200":
+          description: ok
+    delete:
+      responses:
+        "200":
+          description: ok
+    options:
+      responses:
+        "200":
+          description: ok
+    head:
+      responses:
+        "200":
+          description: ok
+    patch:
+      responses:
+        "200":
+          description: ok
+    trace:
+      responses:
+        "200":
+          description: ok

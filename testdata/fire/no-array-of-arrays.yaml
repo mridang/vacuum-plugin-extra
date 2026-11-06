@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Matrix:
+      type: array
+      items:
+        type: array
+        items:
+          type: number

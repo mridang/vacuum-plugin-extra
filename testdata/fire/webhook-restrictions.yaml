@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+webhooks:
+  newPet:
+    servers:
+      - url: https://consumer.example.com
+    post:
+      callbacks: {}
+      servers:
+        - url: https://other.example.com
+      responses:
+        "200":
+          description: ok

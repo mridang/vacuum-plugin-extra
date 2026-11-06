@@ -1,0 +1,25 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    patch:
+      requestBody:
+        content:
+          application/merge-patch+json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                owner:
+                  type: object
+                  required: [id]
+                  properties:
+                    id:
+                      type: string
+      responses:
+        "200":
+          description: ok

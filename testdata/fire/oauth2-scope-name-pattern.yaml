@@ -1,0 +1,24 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  securitySchemes:
+    oauth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://example.com/auth
+          scopes:
+            uid: identity
+            pets.read: Read pets
+            Admin: Administrator
+        clientCredentials:
+          tokenUrl: https://example.com/token
+          scopes:
+            pets.delete: Delete pets
+    key:
+      type: apiKey
+      name: k
+      in: header

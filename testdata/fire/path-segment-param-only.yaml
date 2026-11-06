@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /files/{name}.json:
+    get:
+      responses:
+        "200":
+          description: ok
+  /pets/pet_{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+  /a/{x}{y}:
+    get:
+      responses:
+        "200":
+          description: ok

@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+security:
+  - oauth: [read, admin]
+paths:
+  /pets:
+    get:
+      security:
+        - missing: []
+      responses:
+        "200":
+          description: ok
+
+components:
+  securitySchemes:
+    oauth:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://example.com/auth
+          scopes:
+            read: Read access
+            write: Write access
+    key:
+      type: apiKey
+      name: k
+      in: header
