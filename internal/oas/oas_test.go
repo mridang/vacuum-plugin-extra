@@ -87,8 +87,8 @@ func TestNodeAt(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal([]byte("a:\n  b-c: [x, {d: 1}]\n  \"it's\": y\n"), &root))
 
 	require.Equal(t, "x", oas.NodeAt(&root, "$.a['b-c'][0]").Value)
-	require.Equal(t, "1", oas.NodeAt(&root, oas.JoinAll("$", "a", "b-c")+"[1].d").Value)
-	require.Equal(t, "y", oas.NodeAt(&root, oas.JoinAll("$", "a", "it's")).Value)
+	require.Equal(t, "d", oas.NodeAt(&root, oas.JoinAll("$", "a", "b-c")+"[1].d").Value)
+	require.Equal(t, "it's", oas.NodeAt(&root, oas.JoinAll("$", "a", "it's")).Value)
 	require.Nil(t, oas.NodeAt(&root, "$.a.missing"))
 	require.Nil(t, oas.NodeAt(&root, "$.a['b-c'][5]"))
 	require.NotNil(t, oas.NodeAt(&root, "$"))

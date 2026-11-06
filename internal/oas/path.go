@@ -66,11 +66,14 @@ func UnderNegation(path string) bool {
 
 var pathToken = regexp.MustCompile(`\.([A-Za-z0-9_$-]+)|\['((?:[^'\\]|\\.)*)'\]|\[(\d+)\]`)
 
-// NodeAt returns the node a JSONPath produced by Join and Index points at, or
-// nil when the path does not lead anywhere in root.
+// NodeAt returns the node that marks the location of a JSONPath produced by
+// Join and Index: the key node for a mapping entry and the item itself for a
+// sequence index. It returns nil when the path does not lead anywhere in root.
 func NodeAt(root *yaml.Node, path string) *yaml.Node {
 	rest := strings.TrimPrefix(path, "$")
 	current := Unwrap(root)
+
+	var marker *yaml.Node
 
 	for rest != "" {
 		match := pathToken.FindStringSubmatchIndex(rest)
@@ -78,9 +81,7 @@ func NodeAt(root *yaml.Node, path string) *yaml.Node {
 			return nil
 		}
 
-		submatch := pathToken.FindStringSubmatch(rest)
-		current = step(current, submatch)
-
+		current, marker = step(current, pathToken.FindStringSubmatch(rest))
 		if current == nil {
 			return nil
 		}
@@ -88,21 +89,30 @@ func NodeAt(root *yaml.Node, path string) *yaml.Node {
 		rest = rest[match[1]:]
 	}
 
+	if marker != nil {
+		return marker
+	}
+
 	return current
 }
 
-func step(node *yaml.Node, token []string) *yaml.Node {
+// step follows one path token and returns the node reached and its marker.
+func step(node *yaml.Node, token []string) (*yaml.Node, *yaml.Node) {
 	switch {
 	case token[3] != "":
 		index, err := strconv.Atoi(token[3])
 		if err != nil || node.Kind != yaml.SequenceNode || index >= len(node.Content) {
-			return nil
+			return nil, nil
 		}
 
-		return node.Content[index]
+		return node.Content[index], nil
 	case token[2] != "":
-		return Get(node, strings.ReplaceAll(token[2], `\'`, "'"))
+		key, value := Entry(node, strings.ReplaceAll(token[2], `\'`, "'"))
+
+		return value, key
 	default:
-		return Get(node, token[1])
+		key, value := Entry(node, token[1])
+
+		return value, key
 	}
 }

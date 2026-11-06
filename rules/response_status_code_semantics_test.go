@@ -196,7 +196,7 @@ paths:
 
 		require.Equal(t, []string{
 			"$.paths['/things'].get.responses['422']",
-			"$.paths['/things'].get.responses",
+			"$.paths['/things'].get",
 		}, ruletest.Paths(results))
 		require.Contains(t, ruletest.Messages(results),
 			"Operation responses should use status code 400 instead of 422 for invalid request payloads")

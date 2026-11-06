@@ -2,6 +2,7 @@ package rules
 
 import (
 	"slices"
+
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
@@ -132,7 +133,9 @@ func avoidInlineObjectSchemasHasInlineMember(list *yaml.Node) bool {
 	}
 
 	return slices.ContainsFunc(list.Content, func(member *yaml.Node) bool {
-		return oas.Ref(member) == "" && !(len(member.Content) == 2 && oas.StringAt(member, "type") == "null")
+		isNull := len(member.Content) == 2 && oas.StringAt(member, "type") == "null"
+
+		return oas.Ref(member) == "" && !isNull
 	})
 }
 
