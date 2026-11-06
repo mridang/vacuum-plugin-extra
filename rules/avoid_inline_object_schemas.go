@@ -133,7 +133,7 @@ func avoidInlineObjectSchemasHasInlineMember(list *yaml.Node) bool {
 	}
 
 	return slices.ContainsFunc(list.Content, func(member *yaml.Node) bool {
-		isNull := len(member.Content) == 2 && oas.StringAt(member, "type") == "null"
+		isNull := len(oas.Keys(member)) == 1 && oas.StringAt(member, "type") == "null"
 
 		return oas.Ref(member) == "" && !isNull
 	})

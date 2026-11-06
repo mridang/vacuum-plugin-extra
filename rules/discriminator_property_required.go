@@ -107,15 +107,51 @@ func discriminatorPropertyRequiredName(discriminator *yaml.Node) string {
 }
 
 func discriminatorPropertyRequiredListed(root, schema *yaml.Node, property string) bool {
+	return discriminatorPropertyRequiredListedWithin(root, schema, property, 0)
+}
+
+// discriminatorPropertyRequiredMaxDepth bounds the walk through nested compositions.
+const discriminatorPropertyRequiredMaxDepth = 8
+
+// discriminatorPropertyRequiredListedWithin reports whether every value of the
+// schema must carry the property: it is required by the schema or one of its
+// allOf members, or every oneOf or anyOf member requires it in the same way.
+func discriminatorPropertyRequiredListedWithin(root, schema *yaml.Node, property string, depth int) bool {
+	if depth > discriminatorPropertyRequiredMaxDepth {
+		return false
+	}
+
 	if slices.Contains(oas.Strings(oas.Get(schema, "required")), property) {
 		return true
 	}
 
 	for _, member := range oas.Items(oas.Get(schema, "allOf")) {
-		if slices.Contains(oas.Strings(oas.Get(oas.Resolve(root, member), "required")), property) {
+		if discriminatorPropertyRequiredListedWithin(root, oas.Resolve(root, member), property, depth+1) {
+			return true
+		}
+	}
+
+	for _, keyword := range []string{"oneOf", "anyOf"} {
+		if discriminatorPropertyRequiredAllMembers(root, oas.Get(schema, keyword), property, depth) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// discriminatorPropertyRequiredAllMembers reports whether a non-empty oneOf or
+// anyOf list has only members that require the property.
+func discriminatorPropertyRequiredAllMembers(root, list *yaml.Node, property string, depth int) bool {
+	count := 0
+
+	for _, member := range oas.Items(list) {
+		count++
+
+		if !discriminatorPropertyRequiredListedWithin(root, oas.Resolve(root, member), property, depth+1) {
+			return false
+		}
+	}
+
+	return count > 0
 }
