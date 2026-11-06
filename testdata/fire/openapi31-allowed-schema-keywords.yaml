@@ -6,8 +6,4 @@ components:
   schemas:
     Kind:
       type: string
-      const: cat
-    List:
-      type: array
-      prefixItems:
-        - type: string
+      nullable: true

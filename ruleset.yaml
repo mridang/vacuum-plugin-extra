@@ -982,42 +982,7 @@ rules:
     then:
       function: extra-openapi31-allowed-schema-keywords
       functionOptions:
-        allowedKeywords:
-          - $ref
-          - additionalProperties
-          - allOf
-          - anyOf
-          - default
-          - description
-          - discriminator
-          - enum
-          - example
-          - examples
-          - exclusiveMaximum
-          - exclusiveMinimum
-          - format
-          - items
-          - maximum
-          - maxItems
-          - maxLength
-          - maxProperties
-          - minimum
-          - minItems
-          - minLength
-          - minProperties
-          - multipleOf
-          - not
-          - oneOf
-          - pattern
-          - patternProperties
-          - properties
-          - readOnly
-          - required
-          - title
-          - type
-          - uniqueItems
-          - unevaluatedProperties
-          - writeOnly
+        profile: oas31
   extra-operation-2xx-required:
     description: Every operation must declare a 2xx response.
     message: "{{error}}"

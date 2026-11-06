@@ -14,7 +14,50 @@ func TestOpenapi31AllowedSchemaKeywords(t *testing.T) {
 
 	rule := rules.Openapi31AllowedSchemaKeywords()
 
-	t.Run("flags keywords outside the allow-list", func(t *testing.T) {
+	t.Run("flags keywords that are not part of OpenAPI 3.1", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Kind:
+      type: string
+      nullable: true
+    List:
+      type: array
+      itemz:
+        type: string
+`), nil)
+
+		require.ElementsMatch(t, []string{
+			"$.components.schemas.Kind.nullable",
+			"$.components.schemas.List.itemz",
+		}, ruletest.Paths(results))
+	})
+
+	t.Run("accepts the whole JSON Schema 2020-12 vocabulary by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Kind:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: string
+      const: cat
+      deprecated: true
+    List:
+      type: array
+      prefixItems:
+        - type: string
+      contains: {type: string}
+    Map:
+      type: object
+      propertyNames: {pattern: "^[a-z]+$"}
+`), nil)
+	})
+
+	t.Run("flags keywords outside the ibm profile", func(t *testing.T) {
 		t.Parallel()
 
 		results := ruletest.Run(t, rule, ruletest.Doc31(`
@@ -27,7 +70,7 @@ components:
       type: array
       prefixItems:
         - type: string
-`), nil)
+`), ruletest.Options{"profile": "ibm"})
 
 		require.ElementsMatch(t, []string{
 			"$.components.schemas.Kind.const",
