@@ -139,7 +139,10 @@ func (r Rule) RunRule(nodes []*yaml.Node, ctx model.RuleFunctionContext) []model
 }
 
 func (r Rule) result(finding Finding, matched *yaml.Node, context model.RuleFunctionContext) model.RuleFunctionResult {
-	target := cmp.Or(finding.Node, oas.Unwrap(matched))
+	// A finding without a node is placed at its path: vacuum merges results that
+	// share a rule, a position and a message, so nodeless findings would all
+	// collapse onto the document root.
+	target := cmp.Or(finding.Node, oas.NodeAt(rootOf(matched, context), finding.Path), oas.Unwrap(matched))
 	path := cmp.Or(finding.Path, "$")
 
 	return model.RuleFunctionResult{
