@@ -14,6 +14,20 @@ func TestArrayBoundsAndItemsConsistency(t *testing.T) {
 
 	rule := rules.ArrayBoundsAndItemsConsistency()
 
+	t.Run("ignores constraint fragments below not", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Step:
+      type: object
+      not:
+        properties:
+          tags: {type: array, minItems: 1}
+`), nil)
+	})
+
 	t.Run("flags a bare array", func(t *testing.T) {
 		t.Parallel()
 

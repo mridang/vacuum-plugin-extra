@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"slices"
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
@@ -31,7 +32,9 @@ import (
 //
 // # Options
 //
-// None.
+//   - allowReferenceUnions (bool, default false): do not report a oneOf, anyOf
+//     or allOf whose members are all $refs (or a plain null type). Such a union
+//     defines no object itself, so it is often acceptable inline.
 //
 // # Bad
 //
@@ -80,12 +83,19 @@ func AvoidInlineObjectSchemas() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Check:       PerSchema(checkAvoidInlineObjectSchemas),
+		Options: []Option{{
+			Name:        "allowReferenceUnions",
+			Description: "Do not report compositions whose members are all $refs or a null type.",
+			Default:     false,
+		}},
+		Check: PerSchema(checkAvoidInlineObjectSchemas),
 	})
 }
 
-func checkAvoidInlineObjectSchemas(_ *Call, schema oas.Schema) []Finding {
-	return When(schema.Component == "" && avoidInlineObjectSchemasIsInlineObject(schema.Node), func() Finding {
+func checkAvoidInlineObjectSchemas(call *Call, schema oas.Schema) []Finding {
+	inline := avoidInlineObjectSchemasIsInlineObject(schema.Node, call.Bool("allowReferenceUnions"))
+
+	return When(schema.Component == "" && inline, func() Finding {
 		return Finding{
 			Node:    schema.Node,
 			Path:    schema.Path,
@@ -94,7 +104,7 @@ func checkAvoidInlineObjectSchemas(_ *Call, schema oas.Schema) []Finding {
 	})
 }
 
-func avoidInlineObjectSchemasIsInlineObject(schema *yaml.Node) bool {
+func avoidInlineObjectSchemasIsInlineObject(schema *yaml.Node, allowUnions bool) bool {
 	if oas.Ref(schema) != "" {
 		return false
 	}
@@ -104,12 +114,26 @@ func avoidInlineObjectSchemasIsInlineObject(schema *yaml.Node) bool {
 	}
 
 	for _, keyword := range []string{avoidInlineObjectSchemasAllOf, avoidInlineObjectSchemasAnyOf, literalOneof} {
-		if !oas.Empty(oas.Get(schema, keyword)) {
+		list := oas.Get(schema, keyword)
+		if !oas.Empty(list) && (!allowUnions || avoidInlineObjectSchemasHasInlineMember(list)) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// avoidInlineObjectSchemasHasInlineMember reports whether a composition list
+// holds a member that is neither a $ref nor a plain null type. A union of
+// references, such as oneOf of $refs or a $ref or null, defines no object itself.
+func avoidInlineObjectSchemasHasInlineMember(list *yaml.Node) bool {
+	if list == nil {
+		return false
+	}
+
+	return slices.ContainsFunc(list.Content, func(member *yaml.Node) bool {
+		return oas.Ref(member) == "" && !(len(member.Content) == 2 && oas.StringAt(member, "type") == "null")
+	})
 }
 
 // Keyword names used by this rule.

@@ -84,7 +84,7 @@ func ArrayBoundsAndItemsConsistency() Rule {
 
 // checkArrayBoundsAndItemsConsistency inspects one array schema.
 func checkArrayBoundsAndItemsConsistency(call *Call, schema oas.Schema) []Finding {
-	if !oas.HasType(schema.Node, "array") {
+	if !oas.HasType(schema.Node, "array") || oas.UnderNegation(schema.Path) {
 		return nil
 	}
 

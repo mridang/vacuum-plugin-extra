@@ -37,6 +37,20 @@ components:
 		require.Contains(t, results[0].Message, "items")
 	})
 
+	t.Run("ignores constraint fragments below not", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Step:
+      type: object
+      not:
+        properties:
+          tags: {type: array, minItems: 1}
+`), nil)
+	})
+
 	t.Run("accepts an array with items", func(t *testing.T) {
 		t.Parallel()
 

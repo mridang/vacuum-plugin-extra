@@ -176,7 +176,8 @@ rules:
     type: style
     then:
       function: extra-avoid-inline-object-schemas
-      functionOptions: {}
+      functionOptions:
+        allowReferenceUnions: false
   extra-banned-words-in-docs:
     description: Descriptions, summaries and titles must not contain the configured banned words.
     message: "{{error}}"
@@ -1730,6 +1731,17 @@ rules:
           - hostname
           - ipv4
           - ipv6
+          - duration
+          - time
+          - uri-reference
+          - iri
+          - iri-reference
+          - idn-email
+          - idn-hostname
+          - json-pointer
+          - relative-json-pointer
+          - regex
+          - uri-template
         types:
           - array
           - boolean
