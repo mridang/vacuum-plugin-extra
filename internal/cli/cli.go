@@ -217,6 +217,11 @@ func lint(opts options) ([]Finding, error) {
 		return nil, fmt.Errorf("read spec: %w", err)
 	}
 
+	spec, err = bundleExternalRefs(spec, opts.spec)
+	if err != nil {
+		return nil, err
+	}
+
 	loaded, err := loadRuleset(opts.ruleset)
 	if err != nil {
 		return nil, err

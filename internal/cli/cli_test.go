@@ -150,3 +150,33 @@ components:
 	require.Equal(t, cli.ExitOK, code, errOut.String())
 	require.Empty(t, out.String())
 }
+
+func TestRunFollowsReferencesToOtherFiles(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "pets.yaml"), []byte(`get:
+  summary: List all pets.
+  responses:
+    "200": {description: ok}
+`), 0o600))
+
+	root := filepath.Join(dir, "api.yaml")
+	require.NoError(t, os.WriteFile(root, []byte(`openapi: 3.0.3
+info: {title: Sample, version: "1"}
+paths:
+  /pets:
+    $ref: ./pets.yaml
+`), 0o600))
+
+	var out, errOut bytes.Buffer
+
+	code := cli.Run([]string{"-format", "json", "-only", "extra-summary-no-trailing-period", root}, &out, &errOut)
+
+	require.Equal(t, cli.ExitOK, code, errOut.String())
+
+	var findings []cli.Finding
+	require.NoError(t, json.Unmarshal(out.Bytes(), &findings))
+	require.Len(t, findings, 1)
+	require.Equal(t, "$.paths['/pets'].get.summary", findings[0].Path)
+}
