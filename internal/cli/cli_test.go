@@ -78,3 +78,42 @@ func TestRunRejectsBadUsage(t *testing.T) {
 	require.Equal(t, cli.ExitUsage, cli.Run([]string{"-format", "xml", "a.yaml"}, &out, &errOut))
 	require.Equal(t, cli.ExitUsage, cli.Run([]string{"/does/not/exist.yaml"}, &out, &errOut))
 }
+
+//nolint:paralleltest // the debug flag replaces the process wide default logger
+func TestRunDebugLogsEveryRuleStage(t *testing.T) {
+	var out, errOut bytes.Buffer
+
+	code := cli.Run([]string{"-debug", "-only", "extra-summary-no-trailing-period,extra-no-eval-in-title",
+		writeSpec(t)}, &out, &errOut)
+
+	require.Equal(t, cli.ExitOK, code)
+
+	logs := errOut.String()
+	require.Contains(t, logs, "ruleset loaded")
+	require.Contains(t, logs, "msg=\"rule skipped\" rule=extra-api-max-operations reason=\"not selected by -only\"")
+	require.Contains(t, logs, "msg=run rule=extra-summary-no-trailing-period")
+	require.Contains(t, logs, "nodes=")
+	require.Contains(t, logs, "msg=done rule=extra-summary-no-trailing-period findings=1")
+}
+
+//nolint:paralleltest // the environment variable is read process wide
+func TestRunDebugCanBeEnabledByEnvironment(t *testing.T) {
+	t.Setenv("VACUUM_EXTRA_DEBUG", "1")
+
+	var out, errOut bytes.Buffer
+
+	cli.Run([]string{"-only", "extra-summary-no-trailing-period", writeSpec(t)}, &out, &errOut)
+
+	require.Contains(t, errOut.String(), "ruleset loaded")
+}
+
+//nolint:paralleltest // the environment variable is read process wide
+func TestRunIsSilentWithoutDebug(t *testing.T) {
+	t.Setenv("VACUUM_EXTRA_DEBUG", "")
+
+	var out, errOut bytes.Buffer
+
+	cli.Run([]string{"-only", "extra-summary-no-trailing-period", writeSpec(t)}, &out, &errOut)
+
+	require.Empty(t, errOut.String())
+}

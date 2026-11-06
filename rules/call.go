@@ -1,6 +1,7 @@
 package rules
 
 import (
+	"log/slog"
 	"maps"
 	"slices"
 	"strings"
@@ -23,9 +24,21 @@ type Call struct {
 
 	options  map[string]any
 	defaults map[string]any
+	log      *slog.Logger
 }
 
-func newCall(node *yaml.Node, context model.RuleFunctionContext, declared []Option) *Call {
+// visited records, at debug level, how many nodes of the given kind a
+// combinator handed to its check.
+func (c *Call) visited(kind string, count int) {
+	c.log.Debug("visited", "kind", kind, "count", count)
+}
+
+func newCall(
+	node *yaml.Node,
+	context model.RuleFunctionContext,
+	declared []Option,
+	log *slog.Logger,
+) *Call {
 	defaults := maps.Collect(func(yield func(string, any) bool) {
 		for _, option := range declared {
 			if !yield(option.Name, option.Default) {
@@ -41,6 +54,7 @@ func newCall(node *yaml.Node, context model.RuleFunctionContext, declared []Opti
 		Root:     rootOf(node, context),
 		options:  options,
 		defaults: defaults,
+		log:      log,
 	}
 }
 

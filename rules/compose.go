@@ -1,11 +1,35 @@
 package rules
 
 import (
+	"iter"
 	"slices"
 
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
+
+// counting wraps items so that the number of items consumed is added to the
+// counter, which lets a combinator report how many nodes it visited.
+func counting[T any](items iter.Seq[T], counter *int) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for item := range items {
+			*counter++
+
+			if !yield(item) {
+				return
+			}
+		}
+	}
+}
+
+// visiting runs check over items and records the visited count under kind.
+func visiting[T any](call *Call, kind string, items iter.Seq[T], check func(T) []Finding) []Finding {
+	count := 0
+	findings := seq.FlatMap(counting(items, &count), check)
+	call.visited(kind, count)
+
+	return findings
+}
 
 // One returns a result holding a single finding. It is the value a per-item
 // check returns when the item violates the rule.
@@ -33,7 +57,7 @@ func OnDocument(check func(call *Call) []Finding) Check {
 // findings.
 func PerOperation(check func(call *Call, operation oas.Operation) []Finding) Check {
 	return func(call *Call) []Finding {
-		return seq.FlatMap(oas.Operations(call.Root), func(operation oas.Operation) []Finding {
+		return visiting(call, "operation", oas.Operations(call.Root), func(operation oas.Operation) []Finding {
 			return check(call, operation)
 		})
 	}
@@ -43,7 +67,7 @@ func PerOperation(check func(call *Call, operation oas.Operation) []Finding) Che
 // findings.
 func PerPathItem(check func(call *Call, item oas.PathItem) []Finding) Check {
 	return func(call *Call) []Finding {
-		return seq.FlatMap(oas.PathItems(call.Root), func(item oas.PathItem) []Finding {
+		return visiting(call, "path item", oas.PathItems(call.Root), func(item oas.PathItem) []Finding {
 			return check(call, item)
 		})
 	}
@@ -53,7 +77,7 @@ func PerPathItem(check func(call *Call, item oas.PathItem) []Finding) Check {
 // findings.
 func PerSchema(check func(call *Call, schema oas.Schema) []Finding) Check {
 	return func(call *Call) []Finding {
-		return seq.FlatMap(oas.Schemas(call.Root), func(schema oas.Schema) []Finding {
+		return visiting(call, "schema", oas.Schemas(call.Root), func(schema oas.Schema) []Finding {
 			return check(call, schema)
 		})
 	}

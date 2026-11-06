@@ -2,6 +2,8 @@ package rules
 
 import (
 	"cmp"
+	"context"
+	"log/slog"
 	"maps"
 	"slices"
 	"strings"
@@ -112,15 +114,28 @@ func (r Rule) GetCategory() string {
 
 // RunRule implements model.RuleFunction. It hands every node matched by the
 // given JSONPath to the check and converts the findings into vacuum results.
-func (r Rule) RunRule(nodes []*yaml.Node, context model.RuleFunctionContext) []model.RuleFunctionResult {
-	return seq.FlatMapSlice(nodes, func(node *yaml.Node) []model.RuleFunctionResult {
+func (r Rule) RunRule(nodes []*yaml.Node, ctx model.RuleFunctionContext) []model.RuleFunctionResult {
+	log := slog.Default().With("rule", r.ID())
+	enabled := log.Enabled(context.Background(), slog.LevelDebug)
+
+	if enabled {
+		log.Debug("run", "given", r.spec.Given, "options", ctx.Options, "nodes", len(nodes))
+	}
+
+	results := seq.FlatMapSlice(nodes, func(node *yaml.Node) []model.RuleFunctionResult {
 		return seq.Map(
-			slices.Values(r.spec.Check(newCall(node, context, r.spec.Options))),
+			slices.Values(r.spec.Check(newCall(node, ctx, r.spec.Options, log))),
 			func(finding Finding) model.RuleFunctionResult {
-				return r.result(finding, node, context)
+				return r.result(finding, node, ctx)
 			},
 		)
 	})
+
+	if enabled {
+		log.Debug("done", "findings", len(results))
+	}
+
+	return results
 }
 
 func (r Rule) result(finding Finding, matched *yaml.Node, context model.RuleFunctionContext) model.RuleFunctionResult {
