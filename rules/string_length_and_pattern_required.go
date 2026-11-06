@@ -44,8 +44,9 @@ const (
 // allOf member does, or when every oneOf or anyOf member does ($refs to local
 // components are followed).
 //
-// For a string schema without an enum (an enum anywhere in the composition
-// bypasses every check):
+// For a string schema without an enum or const (either one anywhere in the
+// composition bypasses every check, because the values are already bounded; the
+// const keyword is an addition to IBM's rule, which predates OpenAPI 3.1):
 //
 //   - pattern is required unless format is binary, byte, date, date-time or url;
 //   - minLength is required unless format is date, identifier or url;
@@ -411,8 +412,10 @@ func stringLengthAndPatternRequiredCheck(call *Call, schema *yaml.Node, path str
 		return stringLengthAndPatternRequiredNonString(call, schema, path)
 	}
 
-	if stringLengthAndPatternRequiredAttribute(call.Root, schema, stringLengthAndPatternRequiredEnum) != nil {
-		return nil
+	for _, keyword := range []string{stringLengthAndPatternRequiredEnum, "const"} {
+		if stringLengthAndPatternRequiredAttribute(call.Root, schema, keyword) != nil {
+			return nil
+		}
 	}
 
 	return stringLengthAndPatternRequiredStringChecks(call, schema, path)
