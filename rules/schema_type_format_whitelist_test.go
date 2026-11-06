@@ -41,6 +41,21 @@ components:
 		}, ruletest.Paths(results))
 	})
 
+	t.Run("accepts the JSON Schema 2020-12 string formats", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Ttl:
+      type: string
+      format: duration
+    Clock:
+      type: string
+      format: time
+`), nil)
+	})
+
 	t.Run("accepts standard types and formats", func(t *testing.T) {
 		t.Parallel()
 

@@ -44,7 +44,8 @@ const (
 //     object, string, null.
 //   - integerFormats: allowed integer formats. Default: int32, int64.
 //   - numberFormats: allowed number formats. Default: float, double, int32, int64.
-//   - stringFormats: allowed string formats. Default: byte, binary, date,
+//   - stringFormats: allowed string formats (the JSON Schema 2020-12 formats
+//     duration, time, uri-reference, iri and the like are included). Default: byte, binary, date,
 //     date-time, password, email, uuid, uri, url, hostname, ipv4, ipv6.
 //
 // # Bad
@@ -109,7 +110,9 @@ func SchemaTypeFormatWhitelist() Rule {
 				Description: "Allowed formats of string schemas.",
 				Default: []string{
 					"byte", schemaTypeFormatWhitelistBinary, formatDate, "date-time", "password", "email", literalUUID,
-					"uri", "url", "hostname", "ipv4", "ipv6",
+					"uri", "url", "hostname", "ipv4", "ipv6", "duration", "time", "uri-reference", "iri",
+					"iri-reference", "idn-email", "idn-hostname", "json-pointer", "relative-json-pointer",
+					"regex", "uri-template",
 				},
 			},
 		},

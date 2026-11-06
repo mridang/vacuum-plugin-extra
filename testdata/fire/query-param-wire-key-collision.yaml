@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /search:
+    get:
+      parameters:
+        - name: color
+          in: query
+          schema:
+            type: string
+        - name: filter
+          in: query
+          schema:
+            type: object
+            properties:
+              color:
+                type: integer
+      responses:
+        "200":
+          description: ok

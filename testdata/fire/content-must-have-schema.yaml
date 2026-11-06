@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  requestBodies:
+    Body:
+      content:
+        text/plain: {}
+  responses:
+    Ok:
+      description: ok
+      content:
+        text/plain: {}
+      headers:
+        X-Data:
+          content:
+            text/plain: {}

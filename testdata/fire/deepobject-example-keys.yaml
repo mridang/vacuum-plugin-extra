@@ -1,0 +1,35 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - name: filter
+          in: query
+          style: deepObject
+          schema:
+            $ref: "#/components/schemas/Filter"
+          example:
+            state: open
+            owner:
+              nme: bob
+          examples:
+            one:
+              value:
+                status: open
+                bogus: 1
+      responses:
+        "200":
+          description: ok
+components:
+  schemas:
+    Filter:
+      type: object
+      properties:
+        status: { type: string }
+        owner:
+          type: object
+          properties:
+            name: { type: string }

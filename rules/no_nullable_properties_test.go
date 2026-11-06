@@ -45,6 +45,23 @@ components:
 `), nil, "$.components.schemas.Pet.properties.nickname")
 	})
 
+	t.Run("ignores constraint fragments below not", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Step:
+      type: object
+      not:
+        properties:
+          note:
+            anyOf:
+              - type: "null"
+              - type: string
+`), nil)
+	})
+
 	t.Run("allows nullable properties in merge-patch bodies", func(t *testing.T) {
 		t.Parallel()
 

@@ -1,0 +1,10 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /files/{name}.{ext}/{version}:
+    get:
+      responses:
+        "200":
+          description: ok

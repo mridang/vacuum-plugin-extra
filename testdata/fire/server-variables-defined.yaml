@@ -1,0 +1,12 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+servers:
+  - url: https://{region}.example.com/{version}
+    variables:
+      version:
+        default: v1
+      env:
+        default: prod
+paths: {}

@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Zero:
+      type: string
+      minLength: 0
+    Huge:
+      type: string
+      maxLength: 1073741824
+    Both:
+      type: string
+      minLength: 5000000
+      maxLength: 5000001

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"cmp"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,9 +16,12 @@ import (
 	"github.com/daveshanley/vacuum/model"
 	"github.com/daveshanley/vacuum/motor"
 	"github.com/daveshanley/vacuum/rulesets"
+	"github.com/pb33f/go-yaml"
 
 	extra "github.com/mridang/vacuum-plugin-extra"
+	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
+	"github.com/mridang/vacuum-plugin-extra/rules"
 )
 
 // Exit codes returned by Run.
@@ -48,7 +52,12 @@ type options struct {
 	only    string
 	list    bool
 	spec    string
+	debug   bool
 }
+
+// debugEnv is the environment variable that switches debug logging on, as an
+// alternative to the -debug flag. Any value other than empty, 0 or false enables it.
+const debugEnv = "VACUUM_EXTRA_DEBUG"
 
 // Finding is one violation in the machine readable output.
 type Finding struct {
@@ -75,6 +84,13 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		listRules(stdout)
 
 		return ExitOK
+	}
+
+	if opts.debug {
+		previous := slog.Default()
+		slog.SetDefault(slog.New(slog.NewTextHandler(stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
+
+		defer slog.SetDefault(previous)
 	}
 
 	findings, err := lint(opts)
@@ -110,6 +126,11 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	)
 	only := set.String("only", "", "comma separated rule ids to run; all rules run when empty")
 	list := set.Bool("list", false, "list the rule ids and exit")
+	debug := set.Bool(
+		"debug",
+		debugFromEnv(),
+		"log rules, options, visited nodes and findings to stderr ("+debugEnv+")",
+	)
 
 	if err := set.Parse(args); err != nil {
 		return options{}, fmt.Errorf("parse flags: %w", err)
@@ -122,6 +143,7 @@ func parse(args []string, stderr io.Writer) (options, error) {
 		only:    *only,
 		list:    *list,
 		spec:    set.Arg(0),
+		debug:   *debug,
 	}
 
 	if opts.list {
@@ -140,6 +162,12 @@ func parse(args []string, stderr io.Writer) (options, error) {
 	}
 
 	return opts, nil
+}
+
+func debugFromEnv() bool {
+	value := strings.ToLower(os.Getenv(debugEnv))
+
+	return value != "" && value != "0" && value != "false"
 }
 
 func listRules(out io.Writer) {
@@ -172,6 +200,14 @@ func loadRuleset(path string) (*rulesets.RuleSet, error) {
 		return nil, fmt.Errorf("parse ruleset: %w", err)
 	}
 
+	// vacuum resolves $refs in place for rules that do not say resolved: false,
+	// and these rules read the $ref nodes themselves.
+	for id, rule := range set.Rules {
+		if strings.HasPrefix(id, rules.IDPrefix) {
+			rule.Resolved = false
+		}
+	}
+
 	return set, nil
 }
 
@@ -181,12 +217,18 @@ func lint(opts options) ([]Finding, error) {
 		return nil, fmt.Errorf("read spec: %w", err)
 	}
 
+	spec, err = bundleExternalRefs(spec, opts.spec)
+	if err != nil {
+		return nil, err
+	}
+
 	loaded, err := loadRuleset(opts.ruleset)
 	if err != nil {
 		return nil, err
 	}
 
 	set := onlyRules(loaded, opts.only)
+	logRuleset(opts, loaded, set, spec)
 
 	result := motor.ApplyRulesToRuleSet(&motor.RuleSetExecution{
 		RuleSet:           set,
@@ -204,6 +246,60 @@ func lint(opts options) ([]Finding, error) {
 	}
 
 	return convert(result.Results), nil
+}
+
+// logRuleset reports, at debug level, the rules that were loaded and those that
+// will not run, with the reason.
+func logRuleset(opts options, loaded, selected *rulesets.RuleSet, spec []byte) {
+	log := slog.Default()
+	version := specVersion(spec)
+
+	log.Debug("ruleset loaded", "source", cmp.Or(opts.ruleset, "embedded"), "rules", len(loaded.Rules),
+		"selected", len(selected.Rules), "spec", opts.spec, "openapi", version)
+
+	for _, id := range slices.Sorted(maps.Keys(loaded.Rules)) {
+		rule := loaded.Rules[id]
+
+		switch {
+		case selected.Rules[id] == nil:
+			log.Debug("rule skipped", "rule", id, "reason", "not selected by -only")
+		case rule.Severity == severityNone:
+			log.Debug("rule skipped", "rule", id, "reason", "severity none")
+		case !formatsMatch(rule.Formats, version):
+			log.Debug("rule skipped", "rule", id, "reason", "formats do not match the document",
+				"formats", rule.Formats, "openapi", version)
+		}
+	}
+}
+
+// specVersion returns the openapi or swagger version of the document, or the
+// empty string when it cannot be read.
+func specVersion(spec []byte) string {
+	var root yaml.Node
+	if err := yaml.Unmarshal(spec, &root); err != nil {
+		return ""
+	}
+
+	return oas.Version(oas.Unwrap(&root))
+}
+
+func formatsMatch(formats []string, version string) bool {
+	if len(formats) == 0 || version == "" {
+		return true
+	}
+
+	return slices.ContainsFunc(formats, func(format string) bool {
+		switch format {
+		case "oas3_1":
+			return strings.HasPrefix(version, "3.1") || strings.HasPrefix(version, "3.2")
+		case "oas3":
+			return strings.HasPrefix(version, "3.")
+		case "oas2":
+			return strings.HasPrefix(version, "2.")
+		default:
+			return true
+		}
+	})
 }
 
 // onlyRules returns set restricted to the comma separated rule ids in only, or

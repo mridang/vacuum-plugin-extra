@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Age:
+      type: string
+      minimum: 0
+      multipleOf: 2
+    Flag:
+      type: boolean
+      pattern: "^a$"
+    Names:
+      type: array
+      items:
+        type: string
+      properties:
+        a:
+          type: string

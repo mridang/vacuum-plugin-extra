@@ -1,0 +1,41 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  things: { type: array, items: { type: string } }
+
+  /owners:
+    get:
+      parameters:
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Page"
+components:
+  schemas:
+    Page:
+      type: object
+      properties:
+        owners:
+          type: array
+          items: { type: string }

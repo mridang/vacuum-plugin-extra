@@ -1,0 +1,8 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+security:
+  - apiKey: []
+  - plain
+paths: {}

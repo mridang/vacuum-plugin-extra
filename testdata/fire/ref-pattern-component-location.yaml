@@ -1,0 +1,36 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      parameters:
+        - $ref: "#/components/schemas/Pet"
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/parameters/Owner"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        owner:
+          $ref: "#/components/parameters/Owner"
+        ok:
+          type: string
+  parameters:
+    Owner:
+      name: owner
+      in: query
+      schema:
+        type: string
+  responses:
+    NotFound:
+      description: missing

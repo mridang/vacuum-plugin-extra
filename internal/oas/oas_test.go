@@ -67,3 +67,29 @@ func TestPointerAndResolve(t *testing.T) {
 	require.Nil(t, oas.Pointer(root, "#/components/missing"))
 	require.Nil(t, oas.Pointer(root, "other.yaml#/x"))
 }
+
+func TestUnderNegation(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, oas.UnderNegation("$.components.schemas.A.not"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.not.anyOf[0]"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.properties.b.if.properties.c"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.then.properties.x"))
+	require.False(t, oas.UnderNegation("$.components.schemas.A.properties.not"))
+	require.False(t, oas.UnderNegation("$.components.schemas.A.properties['else'].type"))
+	require.False(t, oas.UnderNegation("$.components.schemas.Nothing.properties.x"))
+}
+
+func TestNodeAt(t *testing.T) {
+	t.Parallel()
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("a:\n  b-c: [x, {d: 1}]\n  \"it's\": y\n"), &root))
+
+	require.Equal(t, "x", oas.NodeAt(&root, "$.a['b-c'][0]").Value)
+	require.Equal(t, "d", oas.NodeAt(&root, oas.JoinAll("$", "a", "b-c")+"[1].d").Value)
+	require.Equal(t, "it's", oas.NodeAt(&root, oas.JoinAll("$", "a", "it's")).Value)
+	require.Nil(t, oas.NodeAt(&root, "$.a.missing"))
+	require.Nil(t, oas.NodeAt(&root, "$.a['b-c'][5]"))
+	require.NotNil(t, oas.NodeAt(&root, "$"))
+}

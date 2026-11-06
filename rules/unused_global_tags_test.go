@@ -57,6 +57,24 @@ paths:
 `), nil)
 	})
 
+	t.Run("counts tags used by webhook operations", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+tags:
+  - name: hooks
+  - name: unused
+webhooks:
+  newPet:
+    post:
+      tags: [hooks]
+      responses:
+        "200":
+          description: ok
+paths: {}
+`), nil, "$.tags[1].name")
+	})
+
 	t.Run("does nothing without a global tag list", func(t *testing.T) {
 		t.Parallel()
 

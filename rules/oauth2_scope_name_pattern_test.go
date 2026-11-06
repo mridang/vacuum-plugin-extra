@@ -137,7 +137,26 @@ paths:
       responses:
         "200":
           description: ok
-`), nil, "$.paths['/open'].get", "$.paths['/empty'].get.security")
+`), ruletest.Options{"allowExplicitPublic": false}, "$.paths['/open'].get", "$.paths['/empty'].get.security")
+	})
+
+	t.Run("skips operations that declare themselves public", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(oauth2ScopeNamePatternEndpointDocument+`
+paths:
+  /open:
+    get:
+      responses:
+        "200":
+          description: ok
+  /livez:
+    get:
+      security: []
+      responses:
+        "200":
+          description: ok
+`), nil, "$.paths['/open'].get")
 	})
 
 	t.Run("inherits the global security", func(t *testing.T) {

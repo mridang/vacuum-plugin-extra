@@ -1,0 +1,18 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    post:
+      responses:
+        "201":
+          description: created
+    put:
+      responses:
+        "200":
+          description: ok
+    get:
+      responses:
+        "200":
+          description: ok

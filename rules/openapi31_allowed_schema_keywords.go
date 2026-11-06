@@ -17,14 +17,18 @@ import (
 // # What it checks
 //
 // In an OpenAPI 3.1 document every keyword of a schema object must be in an
-// allow-list, or be an extension that starts with x-. The default list is the
-// set of keywords that OpenAPI 3.0 already knew (without nullable), plus
-// patternProperties and unevaluatedProperties. Everything else that JSON
-// Schema 2020-12 added, such as const, contains, if, then, else and
-// prefixItems, is reported. The rule only applies to 3.1 documents.
+// allow-list, or be an extension that starts with x-. By default the list is
+// the full vocabulary of OpenAPI 3.1 and JSON Schema 2020-12 (const,
+// propertyNames, prefixItems, if/then/else, $schema, $defs, deprecated, xml and
+// so on), so the rule reports only keywords that are not part of the
+// specification, such as the OpenAPI 3.0 nullable or a misspelt keyword. The
+// rule only applies to 3.1 documents.
 //
-// Restricting the vocabulary keeps a 3.1 document convertible to 3.0 and usable
-// with generators that do not implement the whole of JSON Schema 2020-12.
+// Set profile to ibm for the restricted vocabulary of IBM's ibm-schema-keywords,
+// which keeps a 3.1 document convertible to 3.0: the keywords OpenAPI 3.0
+// already knew (without nullable), plus patternProperties and
+// unevaluatedProperties. Everything else that JSON Schema 2020-12 added is then
+// reported.
 //
 // # Where it comes from
 //
@@ -32,14 +36,16 @@ import (
 //
 // # Options
 //
-//   - allowedKeywords (list of strings): the allowed schema keywords; the
-//     default is the IBM list ($ref, additionalProperties, allOf, anyOf,
-//     default, description, discriminator, enum, example, examples,
-//     exclusiveMaximum, exclusiveMinimum, format, items, maximum, maxItems,
-//     maxLength, maxProperties, minimum, minItems, minLength, minProperties,
-//     multipleOf, not, oneOf, pattern, patternProperties, properties,
-//     readOnly, required, title, type, uniqueItems, unevaluatedProperties,
-//     writeOnly).
+//   - profile (string, default oas31): oas31 allows every OpenAPI 3.1 and JSON
+//     Schema 2020-12 keyword; ibm allows only the IBM list ($ref,
+//     additionalProperties, allOf, anyOf, default, description, discriminator,
+//     enum, example, examples, exclusiveMaximum, exclusiveMinimum, format,
+//     items, maximum, maxItems, maxLength, maxProperties, minimum, minItems,
+//     minLength, minProperties, multipleOf, not, oneOf, pattern,
+//     patternProperties, properties, readOnly, required, title, type,
+//     uniqueItems, unevaluatedProperties, writeOnly).
+//   - allowedKeywords (list of strings, no default): the allowed keywords;
+//     when set it replaces the profile.
 //
 // # Bad
 //
@@ -48,7 +54,7 @@ import (
 //	  schemas:
 //	    Kind:
 //	      type: string
-//	      const: cat
+//	      nullable: true
 //
 // # Good
 //
@@ -61,9 +67,10 @@ import (
 //
 // # Known false positives
 //
-// Keywords that are valid in OpenAPI 3.1 but missing from the default list,
-// such as deprecated, xml, externalDocs and $schema, are reported. Extend the
-// allowedKeywords option when they are wanted. Only schemas reachable from the
+// With the ibm profile, keywords that are valid in OpenAPI 3.1 but missing from
+// the IBM list, such as deprecated, xml, externalDocs and $schema, are
+// reported. Use the default profile or extend allowedKeywords when they are
+// wanted. Only schemas reachable from the
 // document body are inspected, not those below $defs of external files.
 func Openapi31AllowedSchemaKeywords() Rule {
 	return New(Spec{
@@ -76,16 +83,20 @@ func Openapi31AllowedSchemaKeywords() Rule {
 		Formats:     []string{formatOAS31},
 		Options: []Option{
 			{
+				Name:        openapi31AllowedSchemaKeywordsProfile,
+				Description: "The keyword vocabulary to allow: oas31 (every keyword of OpenAPI 3.1 and JSON Schema 2020-12) or ibm (the restricted IBM list).",
+				Default:     openapi31AllowedSchemaKeywordsOAS31,
+			},
+			{
 				Name:        "allowedKeywords",
-				Description: "The schema keywords that are allowed.",
-				Default:     openapi31AllowedSchemaKeywordsDefault(),
+				Description: "The schema keywords that are allowed. When set it replaces the profile.",
 			},
 		},
 		Check: PerSchema(checkOpenapi31AllowedSchemaKeywords),
 	})
 }
 
-func openapi31AllowedSchemaKeywordsDefault() []string {
+func openapi31AllowedSchemaKeywordsIBM() []string {
 	return []string{
 		"$ref",
 		openapi31AllowedSchemaKeywordsAdditional,
@@ -125,12 +136,32 @@ func openapi31AllowedSchemaKeywordsDefault() []string {
 	}
 }
 
+func openapi31AllowedSchemaKeywordsFull() []string {
+	return append(openapi31AllowedSchemaKeywordsIBM(), strings.Fields(`$schema $id $anchor $dynamicRef
+		$dynamicAnchor $defs $comment $vocabulary const contains minContains maxContains if then else
+		dependentRequired dependentSchemas prefixItems propertyNames contentEncoding contentMediaType
+		contentSchema unevaluatedItems deprecated xml externalDocs`)...)
+}
+
+// openapi31AllowedSchemaKeywordsFor returns the keywords allowed by the options.
+func openapi31AllowedSchemaKeywordsFor(call *Call) []string {
+	if explicit := call.Strings("allowedKeywords"); len(explicit) > 0 {
+		return explicit
+	}
+
+	if call.String(openapi31AllowedSchemaKeywordsProfile) == openapi31AllowedSchemaKeywordsIBMProfile {
+		return openapi31AllowedSchemaKeywordsIBM()
+	}
+
+	return openapi31AllowedSchemaKeywordsFull()
+}
+
 func checkOpenapi31AllowedSchemaKeywords(call *Call, schema oas.Schema) []Finding {
 	if !oas.IsOAS31(call.Root) {
 		return nil
 	}
 
-	allowed := call.Strings("allowedKeywords")
+	allowed := openapi31AllowedSchemaKeywordsFor(call)
 
 	return seq.FlatMapPairs(oas.Pairs(schema.Node), func(key, _ *yaml.Node) []Finding {
 		return When(
@@ -149,4 +180,7 @@ func checkOpenapi31AllowedSchemaKeywords(call *Call, schema oas.Schema) []Findin
 // Keyword names used by this rule.
 const (
 	openapi31AllowedSchemaKeywordsAdditional = "additionalProperties"
+	openapi31AllowedSchemaKeywordsProfile    = "profile"
+	openapi31AllowedSchemaKeywordsOAS31      = "oas31"
+	openapi31AllowedSchemaKeywordsIBMProfile = "ibm"
 )

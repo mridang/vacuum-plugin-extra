@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        created_at:
+          type: string
+        birth_date:
+          type: string
+          format: date
+        expires:
+          type: integer
+        depends_on:
+          type: string
+        name:
+          type: string

@@ -21,6 +21,16 @@ components:
             pets.read: read pets
 `
 
+const securityScopesDeclaredOAuthSchemes = `
+    oauth:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/token
+          scopes:
+            pets.read: read pets
+`
+
 func TestSecurityScopesDeclared(t *testing.T) {
 	t.Parallel()
 
@@ -77,6 +87,26 @@ components:
       type: http
       scheme: basic
 `), nil, "$.components.securitySchemes.key", "$.components.securitySchemes.basic")
+	})
+
+	t.Run("names the type of a scheme that is not allowed, or says it has none", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc30(`
+components:
+  securitySchemes:
+    cookie:
+      type: apiKey
+      name: sid
+      in: cookie
+    typeless:
+      description: no type
+`+securityScopesDeclaredOAuthSchemes), nil)
+
+		require.ElementsMatch(t, []string{
+			"security scheme 'cookie' of type apiKey is not allowed, use oauth2 or bearer",
+			"security scheme 'typeless' of type (none) is not allowed, use oauth2 or bearer",
+		}, ruletest.Messages(results))
 	})
 
 	t.Run("accepts declared scopes and non OAuth2 requirement scopes", func(t *testing.T) {

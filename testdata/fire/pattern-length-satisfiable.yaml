@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Code:
+      type: string
+      pattern: "^[A-Z]{3}$"
+      minLength: 5

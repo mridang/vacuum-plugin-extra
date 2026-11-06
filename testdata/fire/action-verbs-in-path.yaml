@@ -1,0 +1,15 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/create:
+    post:
+      responses:
+        "201":
+          description: ok
+  /Delete/{id}:
+    delete:
+      responses:
+        "204":
+          description: ok

@@ -14,6 +14,36 @@ func TestAvoidInlineObjectSchemas(t *testing.T) {
 
 	rule := rules.AvoidInlineObjectSchemas()
 
+	t.Run("accepts unions of references and null when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Cat"
+                  - $ref: "#/components/schemas/Dog"
+components:
+  schemas:
+    Cat: {type: object, properties: {a: {type: string}}}
+    Dog: {type: object, properties: {b: {type: string}}}
+    Owner:
+      type: object
+      properties:
+        pet:
+          anyOf:
+            - $ref: "#/components/schemas/Cat"
+            - type: "null"
+`), ruletest.Options{"allowReferenceUnions": true})
+	})
+
 	t.Run("flags an inline request body object", func(t *testing.T) {
 		t.Parallel()
 

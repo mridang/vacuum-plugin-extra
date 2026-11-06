@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      parameters:
+        - { name: name, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: { type: string }
+                name: { type: string }
+      responses:
+        "200":
+          description: ok

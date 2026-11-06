@@ -1,0 +1,21 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+        "404":
+          description: missing
+    put:
+      parameters:
+        - name: If-Match
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: ok

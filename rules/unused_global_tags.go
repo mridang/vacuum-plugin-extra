@@ -69,9 +69,12 @@ func UnusedGlobalTags() Rule {
 
 // checkUnusedGlobalTags reports global tags no operation references.
 func checkUnusedGlobalTags(call *Call) []Finding {
-	used := seq.FlatMap(oas.Operations(call.Root), func(operation oas.Operation) []string {
-		return oas.Strings(oas.Get(operation.Node, "tags"))
-	})
+	used := slices.Concat(
+		seq.FlatMap(oas.Operations(call.Root), func(operation oas.Operation) []string {
+			return oas.Strings(oas.Get(operation.Node, "tags"))
+		}),
+		unusedGlobalTagsWebhookTags(call.Root),
+	)
 
 	return seq.FlatMapPairs(oas.Items(oas.Get(call.Root, "tags")), func(i int, tag *yaml.Node) []Finding {
 		name := oas.Get(tag, "name")
@@ -82,6 +85,20 @@ func checkUnusedGlobalTags(call *Call) []Finding {
 				Path:    oas.Join(oas.Index("$.tags", i), "name"),
 				Message: "tag " + name.Value + " is not used by any operation",
 			}
+		})
+	})
+}
+
+// unusedGlobalTagsWebhookTags lists the tags of the operations under webhooks,
+// which count as uses of a tag like the operations under paths.
+func unusedGlobalTagsWebhookTags(root *yaml.Node) []string {
+	return seq.FlatMapPairs(oas.Pairs(oas.Get(root, "webhooks")), func(_, item *yaml.Node) []string {
+		return seq.FlatMapPairs(oas.Pairs(oas.Resolve(root, item)), func(method, operation *yaml.Node) []string {
+			if !oas.IsMethod(method.Value) {
+				return nil
+			}
+
+			return oas.Strings(oas.Get(operation, "tags"))
 		})
 	})
 }

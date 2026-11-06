@@ -91,6 +91,21 @@ components:
 `), nil)
 	})
 
+	t.Run("bypasses everything for const", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          const: not_found
+`), nil)
+	})
+
 	t.Run("reads attributes through allOf and oneOf", func(t *testing.T) {
 		t.Parallel()
 

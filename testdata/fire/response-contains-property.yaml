@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        "404":
+          description: missing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer }
+        "400":
+          description: bad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+components:
+  schemas:
+    Pet:
+      allOf:
+        - type: object
+          properties:
+            name: { type: string }

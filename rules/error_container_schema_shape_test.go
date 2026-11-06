@@ -77,6 +77,46 @@ func TestErrorContainerSchemaShape(t *testing.T) {
 `), nil, "$.components.schemas.Error")
 	})
 
+	t.Run("reports each schema that lacks a property at its own location", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc30(`
+paths:
+  /a:
+    get:
+      responses:
+        "400":
+          description: bad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/First"
+  /b:
+    get:
+      responses:
+        "400":
+          description: bad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Second"
+components:
+  schemas:
+    First:
+      type: object
+      properties:
+        message: {type: string}
+    Second:
+      type: object
+      properties:
+        message: {type: string}
+`), nil)
+
+		require.Contains(t, ruletest.Paths(results), "$.components.schemas.First.properties")
+		require.Contains(t, ruletest.Paths(results), "$.components.schemas.Second.properties")
+		require.Len(t, ruletest.Paths(results), 4)
+	})
+
 	t.Run("flags missing trace and errors", func(t *testing.T) {
 		t.Parallel()
 

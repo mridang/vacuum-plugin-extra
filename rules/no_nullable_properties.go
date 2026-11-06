@@ -72,7 +72,7 @@ func NoNullableProperties() Rule {
 
 // checkNoNullableProperties reports nullable properties.
 func checkNoNullableProperties(call *Call, schema oas.Schema) []Finding {
-	if strings.Contains(schema.Path, noNullablePropertiesMergePatch) {
+	if strings.Contains(schema.Path, noNullablePropertiesMergePatch) || oas.UnderNegation(schema.Path) {
 		return nil
 	}
 

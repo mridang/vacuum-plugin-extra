@@ -1,0 +1,19 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      type: object
+      required: []
+      properties:
+        kind:
+          type: string
+          enum: [cat, cat]
+        size:
+          type: string
+          enum: []
+    Dup:
+      type: object
+      required: [a, b, a]

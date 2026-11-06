@@ -76,6 +76,10 @@ func ArrayRequiresItems() Rule {
 // checkArrayRequiresItems reports array schemas without items.
 
 func checkArrayRequiresItems(call *Call, schema oas.Schema) []Finding {
+	if oas.UnderNegation(schema.Path) {
+		return nil
+	}
+
 	allowPrefix := call.Bool(arrayRequiresItemsAllowPrefix)
 	prefixed := allowPrefix && oas.Has(schema.Node, "prefixItems")
 	missing := oas.HasType(schema.Node, "array") && !oas.Has(schema.Node, "items") && !prefixed

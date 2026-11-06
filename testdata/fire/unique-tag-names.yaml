@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+tags:
+  - name: pets
+  - name: owners
+  - name: pets
+  - name: pets
+paths: {}

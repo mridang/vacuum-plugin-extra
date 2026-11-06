@@ -1,0 +1,10 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Status:
+      type: string
+      enum: [inProgress, done, created_atUTC, DONE_NOW, in-progress]

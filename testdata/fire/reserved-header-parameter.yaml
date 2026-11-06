@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    parameters:
+      - name: accept
+        in: header
+        schema: { type: string }
+    post:
+      parameters:
+        - name: Content-Type
+          in: header
+          schema: { type: string }
+        - name: X-Trace
+          in: header
+          schema: { type: string }
+      responses:
+        "200":
+          description: ok
+          headers:
+            content-type:
+              schema: { type: string }
+components:
+  parameters:
+    Auth:
+      name: Authorization
+      in: header
+      schema: { type: string }
