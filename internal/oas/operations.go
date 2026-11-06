@@ -105,6 +105,10 @@ type Parameter struct {
 	Node *yaml.Node
 	// Path is the JSONPath of the parameter entry.
 	Path string
+	// Entry is the item as written in the parameters list, which is the $ref
+	// object when the parameter is a reference. Report findings on it, because
+	// Node is shared by every operation that references the same component.
+	Entry *yaml.Node
 	// Inherited is true when the parameter comes from the path item.
 	Inherited bool
 }
@@ -164,6 +168,7 @@ func collectParameters(root, list *yaml.Node, base string, inherited bool) []Par
 		return []Parameter{{
 			Node:      Resolve(root, item),
 			Path:      Index(base, i),
+			Entry:     item,
 			Inherited: inherited,
 		}}
 	})

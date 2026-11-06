@@ -74,7 +74,7 @@ func checkRequiredParametersBeforeOptional(call *Call, operation oas.Operation) 
 		return When(parameter.Required() && optionalBefore, func() Finding {
 			return Finding{
 				Path:    parameter.Path,
-				Node:    parameter.Node,
+				Node:    parameter.Entry,
 				Message: "required parameter '" + parameter.Name() + "' must be listed before optional parameters",
 			}
 		})
