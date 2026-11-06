@@ -1,0 +1,47 @@
+name: Release to Github
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: ./
+
+env:
+  GONOSUMDB: github.com/mridang/vacuum-plugin-extra/*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-package:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Runner Common Setup
+        uses: mridang/action-runner-common@v1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Run tests
+        run: go test ./...
+
+      - name: Run semantic-release
+        uses: mridang/action-semantic-release@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

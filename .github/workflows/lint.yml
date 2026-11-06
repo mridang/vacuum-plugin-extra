@@ -1,0 +1,35 @@
+name: Lint Code (Golint)
+
+on: push
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ./
+
+env:
+  GONOSUMDB: github.com/mridang/vacuum-plugin-extra/*
+
+jobs:
+  code-linting:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Runner Common Setup
+        uses: mridang/action-runner-common@v1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.15.0
+          install-mode: goinstall

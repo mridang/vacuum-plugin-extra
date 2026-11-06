@@ -1,0 +1,42 @@
+name: Run Tests
+
+on: push
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: ./
+
+env:
+  GONOSUMDB: github.com/mridang/vacuum-plugin-extra/*
+
+jobs:
+  app-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Runner Common Setup
+        uses: mridang/action-runner-common@v1
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Test
+        run: make test
+
+      - name: Generate coverage report
+        if: always()
+        uses: mridang/action-test-reporter@v3
+        with:
+          results-path: ".out/junit.xml"
+          coverage-path: ".out/lcov.info"
