@@ -144,7 +144,7 @@ func checkWellDefinedDictionaries(call *Call) []Finding {
 	})
 
 	return seq.FlatMapSlice(schemas, func(schema oas.Schema) []Finding {
-		if slices.Contains(skipped, schema.Node) || oas.Ref(schema.Node) != "" {
+		if slices.Contains(skipped, schema.Node) || oas.Ref(schema.Node) != "" || oas.UnderNegation(schema.Path) {
 			return nil
 		}
 

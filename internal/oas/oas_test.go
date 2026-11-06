@@ -67,3 +67,15 @@ func TestPointerAndResolve(t *testing.T) {
 	require.Nil(t, oas.Pointer(root, "#/components/missing"))
 	require.Nil(t, oas.Pointer(root, "other.yaml#/x"))
 }
+
+func TestUnderNegation(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, oas.UnderNegation("$.components.schemas.A.not"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.not.anyOf[0]"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.properties.b.if.properties.c"))
+	require.True(t, oas.UnderNegation("$.components.schemas.A.then.properties.x"))
+	require.False(t, oas.UnderNegation("$.components.schemas.A.properties.not"))
+	require.False(t, oas.UnderNegation("$.components.schemas.A.properties['else'].type"))
+	require.False(t, oas.UnderNegation("$.components.schemas.Nothing.properties.x"))
+}
