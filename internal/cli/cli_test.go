@@ -117,3 +117,36 @@ func TestRunIsSilentWithoutDebug(t *testing.T) {
 
 	require.Empty(t, errOut.String())
 }
+
+func TestRunSeesRefsAsWritten(t *testing.T) {
+	t.Parallel()
+
+	path := filepath.Join(t.TempDir(), "api.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(`openapi: 3.0.3
+info: {title: Sample, version: "1"}
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Cat"
+                  - $ref: "#/components/schemas/Dog"
+                discriminator: {propertyName: kind}
+components:
+  schemas:
+    Cat: {type: object, required: [kind], properties: {kind: {type: string}, lives: {type: integer}}}
+    Dog: {type: object, required: [kind], properties: {kind: {type: string}, bark: {type: boolean}}}
+`), 0o600))
+
+	var out, errOut bytes.Buffer
+
+	code := cli.Run([]string{"-only", "extra-illogical-composition-keywords", path}, &out, &errOut)
+
+	require.Equal(t, cli.ExitOK, code, errOut.String())
+	require.Empty(t, out.String())
+}

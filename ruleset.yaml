@@ -5,6 +5,10 @@
 #   go build -buildmode=plugin -o extra.so ./plugin
 #   vacuum lint -r ruleset.yaml -f ./dir-containing-extra-so openapi.yaml
 #
+# Every rule sets resolved: false. vacuum resolves $ref pointers in place unless
+# a rule says otherwise, and the rules of this catalogue read the $ref nodes
+# themselves, so they must see the document as written.
+#
 # Rules that need configuration to do anything (for example a list of banned
 # words) are inert until their functionOptions are filled in.
 
@@ -15,6 +19,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the path segment to a noun and let the HTTP method express the action.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -45,6 +50,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove additionalProperties or change the schema type to object.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -55,6 +61,7 @@ rules:
     message: "{{error}}"
     howToFix: Give admin operations a dedicated security scheme or scope that no non-admin operation uses.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -66,6 +73,7 @@ rules:
     message: "{{error}}"
     howToFix: Make the types of the schema and of its allOf branches compatible, or remove the conflicting branch.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -76,6 +84,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove allowReserved from the parameter or header, or move the parameter to the query string.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -86,6 +95,7 @@ rules:
     message: "{{error}}"
     howToFix: Split the API into several smaller documents or raise the maxOperations option.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -97,6 +107,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the property from the variant, add it to the canonical schema, or give it the canonical type.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -107,6 +118,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a version segment such as /v1 to a server URL or path, or declare a version header.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -117,6 +129,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an items schema and numeric minItems and maxItems with minItems not above maxItems.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -130,6 +143,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: warn
     type: style
     then:
@@ -145,6 +159,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an items schema to the array schema.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -156,6 +171,7 @@ rules:
     message: "{{error}}"
     howToFix: Move the inline object schema to components/schemas and reference it with $ref.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -166,6 +182,7 @@ rules:
     message: "{{error}}"
     howToFix: Reword the text so that it no longer uses the banned word.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -176,6 +193,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the parameter so that it starts with an allowed prefix such as is or has.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -189,6 +207,7 @@ rules:
     message: "{{error}}"
     howToFix: Wrap the collection in an object whose array property is named after the last path segment.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -200,6 +219,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the component to a shorter name and update the references to it.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -211,6 +231,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the schema to its PascalCase form and update every $ref to it.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -222,6 +243,7 @@ rules:
     message: "{{error}}"
     howToFix: Make every branch of the composition declare the same type, or restructure the schema.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -232,6 +254,7 @@ rules:
     message: "{{error}}"
     howToFix: Align the type of the property with its earlier declaration, or rename the property.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -242,6 +265,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a schema to the media type object.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -252,6 +276,7 @@ rules:
     message: "{{error}}"
     howToFix: Use one of the allowed media types, or extend the mimetypes option.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -265,6 +290,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the Access-Control-Allow-Origin header to the headers of the response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -276,6 +302,7 @@ rules:
     message: "{{error}}"
     howToFix: Use type string with format date or date-time for the schema.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -287,6 +314,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the property so that it matches one of the configured name patterns.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -302,6 +330,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the example key to a property of the schema, or add the property to the schema.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -312,6 +341,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the redundant example or replace it with a value that differs from the default.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -322,6 +352,7 @@ rules:
     message: "{{error}}"
     howToFix: Reword the description to say what the operation returns, allows or is used for.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -346,6 +377,7 @@ rules:
     message: "{{error}}"
     howToFix: Replace the 422 response with a 400 response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -356,6 +388,7 @@ rules:
     message: "{{error}}"
     howToFix: Define the discriminator property in the schema, or change propertyName to an existing property.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -366,6 +399,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the discriminator property to the required list of the schema.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -376,6 +410,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an operation to paths, or lint the correct file.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -386,6 +421,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the empty list or the duplicated entry.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -396,6 +432,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename or remove the encoding key so that it matches a property of the schema.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -406,6 +443,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the enum value to snake_case or SCREAMING_SNAKE_CASE.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -418,6 +456,7 @@ rules:
     message: "{{error}}"
     howToFix: Make the error schema an object with trace and an errors array of error models with code, message and more_info.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -428,6 +467,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an application/json entry to the content of the error response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -438,6 +478,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a content map with an error schema to the response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -449,6 +490,7 @@ rules:
     message: "{{error}}"
     howToFix: Declare an ETag response header on the 2xx responses of the GET operation.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -459,6 +501,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the example property so that it follows the configured case style.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -472,6 +515,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: error
     type: validation
     then:
@@ -484,6 +528,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a required property to the object schema, set explode to false, or make the parameter optional.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -494,6 +539,7 @@ rules:
     message: "{{error}}"
     howToFix: "Declare type: string on the schema that carries x-extensible-enum."
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -504,6 +550,7 @@ rules:
     message: "{{error}}"
     howToFix: Change the type to one the format applies to, or use a different format.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -514,6 +561,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a non-empty security list at the document root.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -524,6 +572,7 @@ rules:
     message: "{{error}}"
     howToFix: Shorten the response header name.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -535,6 +584,7 @@ rules:
     message: "{{error}}"
     howToFix: Declare the path parameter once in the parameters of the path item and remove it from the operations.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -545,6 +595,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the header and describe the media type with content and credentials with securitySchemes.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -559,6 +610,7 @@ rules:
     message: "{{error}}"
     howToFix: Give the composition at least two distinct, non-empty, mutually exclusive members, or use the schema directly.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -569,6 +621,7 @@ rules:
     message: "{{error}}"
     howToFix: Add format int32 or int64 and minimum and maximum values within the range of the format.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -581,6 +634,7 @@ rules:
     message: "{{error}}"
     howToFix: Give the link exactly one valid operationId or operationRef and rename its parameters to match the target operation.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -592,6 +646,7 @@ rules:
     message: "{{error}}"
     howToFix: Point the link at an existing operationId or at a valid relative operationRef.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -605,6 +660,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: warn
     type: style
     then:
@@ -617,6 +673,7 @@ rules:
     message: "{{error}}"
     howToFix: Use one of the allowed media types or extend the allowed option.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -629,6 +686,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove required from the schema, or use a separate schema for the merge patch request.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -639,6 +697,7 @@ rules:
     message: "{{error}}"
     howToFix: Address the nested resource through its own root path, or raise the max option.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -650,6 +709,7 @@ rules:
     message: "{{error}}"
     howToFix: Wrap the inner array in an object schema.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -660,6 +720,7 @@ rules:
     message: "{{error}}"
     howToFix: Use a non-JSON media type for binary data, or encode the value as a base64 string with format byte.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -670,6 +731,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the requestBody, or move its data into parameters.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -685,6 +747,7 @@ rules:
     message: "{{error}}"
     howToFix: Break the cycle, for example by referencing the related resource by identifier.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -696,6 +759,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a resource name segment between the two path parameters.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -706,6 +770,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the default, or make the parameter optional.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -717,6 +782,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the eval( text from the title or description.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -727,6 +793,7 @@ rules:
     message: "{{error}}"
     howToFix: Move the inline schema to components/schemas and reference it with $ref.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -741,6 +808,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the Link header and return the links in the response body.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -751,6 +819,7 @@ rules:
     message: "{{error}}"
     howToFix: Keep either the inclusive or the exclusive bound for the side that is reported.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -761,6 +830,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the nested callbacks, or model the workflow with separate operations.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -771,6 +841,7 @@ rules:
     message: "{{error}}"
     howToFix: "Remove nullable: true or the null type and make the property optional instead."
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -781,6 +852,7 @@ rules:
     message: "{{error}}"
     howToFix: Move the parameters into each operation of the path item.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -791,6 +863,7 @@ rules:
     message: "{{error}}"
     howToFix: Inline the example value, or move the reference into an examples entry.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -801,6 +874,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the header parameter and describe the behavior with content, security schemes or preconditions.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -817,6 +891,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the property to end in _id.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -827,6 +902,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the whitespace from the example key and use summary for the readable label.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -837,6 +913,7 @@ rules:
     message: "{{error}}"
     howToFix: Replace */* with the concrete media types that the API supports.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -847,6 +924,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove nullable from the body schema and make the body or one of its members optional instead.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -857,6 +935,7 @@ rules:
     message: "{{error}}"
     howToFix: "Add a type next to nullable, for example type: object."
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -869,6 +948,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: error
     type: style
     then:
@@ -879,6 +959,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the scope so that it matches the configured pattern, and secure the endpoint with defined OAuth2 scopes.
     given: $
+    resolved: false
     severity: error
     type: style
     then:
@@ -895,6 +976,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: error
     type: validation
     then:
@@ -941,6 +1023,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a 2xx response such as 200, 201, 204 or 2XX to the operation.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -951,6 +1034,7 @@ rules:
     message: "{{error}}"
     howToFix: Write a more descriptive summary or description for the operation.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -962,6 +1046,7 @@ rules:
     message: "{{error}}"
     howToFix: Start the description with a plain sentence and move structured content after it.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -972,6 +1057,7 @@ rules:
     message: "{{error}}"
     howToFix: Describe what the operation does instead of repeating its method and path.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -982,6 +1068,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the operationId to follow the configured case convention.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -994,6 +1081,7 @@ rules:
     message: "{{error}}"
     howToFix: Shorten the operationId.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1005,6 +1093,7 @@ rules:
     message: "{{error}}"
     howToFix: Standardise the operationIds on a smaller set of verb prefixes, or raise the max option.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1016,6 +1105,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the operationId so that it is not a reserved word.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1062,6 +1152,7 @@ rules:
     message: "{{error}}"
     howToFix: Name the operation <verb>_<resource>, for example list_bands, get_band or create_band.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1073,6 +1164,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the operationId so that it starts with a verb such as get, list, create, update or delete.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1103,6 +1195,7 @@ rules:
     message: "{{error}}"
     howToFix: Reduce the number of parameters, for example by moving inputs into a request body.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1115,6 +1208,7 @@ rules:
     message: "{{error}}"
     howToFix: Shorten the summary and move the details to the description.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1126,6 +1220,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a short summary to the operation.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1136,6 +1231,7 @@ rules:
     message: "{{error}}"
     howToFix: Mark the request body as required, or drop the required properties from the schema.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1146,6 +1242,7 @@ rules:
     message: "{{error}}"
     howToFix: Make limit an optional integer with default and maximum, offset an optional integer, the page token an optional string named start, and echo them with page links in the response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1156,6 +1253,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the parameter or the request body property so that the names are unique.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1166,6 +1264,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the parameter so that it satisfies the length and pattern constraints.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1179,6 +1278,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a schema with a type to the parameter.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1189,6 +1289,7 @@ rules:
     message: "{{error}}"
     howToFix: Use application/json-patch+json or application/merge-patch+json for the PATCH request body.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1202,6 +1303,7 @@ rules:
     message: "{{error}}"
     howToFix: Reorder the operations of the path item to follow the configured method order.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1221,6 +1323,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a summary or a description to the path item.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1231,6 +1334,7 @@ rules:
     message: "{{error}}"
     howToFix: Start the path with a literal segment and keep each path parameter in a segment of its own.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1241,6 +1345,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the path variable to the configured case style and update the parameter definition.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1252,6 +1357,7 @@ rules:
     message: "{{error}}"
     howToFix: Fix the shape of the path and rename the segments to the configured case.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1263,6 +1369,7 @@ rules:
     message: "{{error}}"
     howToFix: Move the literal text into its own path segment so the segment is only a parameter reference.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1273,6 +1380,7 @@ rules:
     message: "{{error}}"
     howToFix: Use the plural form of the path segment, or add it to the exceptions option.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1286,6 +1394,7 @@ rules:
     message: "{{error}}"
     howToFix: Start the pattern with ^ and end it with $.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1298,6 +1407,7 @@ rules:
     message: "{{error}}"
     howToFix: Change the pattern or the minLength and maxLength so that a string can satisfy both.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1310,6 +1420,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1320,6 +1431,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an If-Match, If-None-Match, If-Modified-Since or If-Unmodified-Since header parameter.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1335,6 +1447,7 @@ rules:
     message: "{{error}}"
     howToFix: Replace the offset parameter with a start page token parameter and return the next page link.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1345,6 +1458,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename one of the properties so that the names differ by more than case or separators.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1355,6 +1469,7 @@ rules:
     message: "{{error}}"
     howToFix: Use the same schema for the PUT request body and the GET response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1368,6 +1483,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1378,6 +1494,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename one of the parameters or properties, or give the colliding schemas the same type.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1388,6 +1505,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove either readOnly or writeOnly from the schema.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1398,6 +1516,7 @@ rules:
     message: "{{error}}"
     howToFix: "Move the target into components under the matching section and reference it as #/components/<kind>/<name>."
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1408,6 +1527,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the duplicated description or give it a text that adds information.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1418,6 +1538,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an application/json entry to the request body content.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1429,6 +1550,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a required list with the mandatory properties to the request body schema.
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1441,6 +1563,7 @@ rules:
     message: "{{error}}"
     howToFix: Describe the fields of the request body with properties.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1451,6 +1574,7 @@ rules:
     message: "{{error}}"
     howToFix: Define the properties of the body in its object schema.
     given: $
+    resolved: false
     severity: error
     type: style
     then:
@@ -1461,6 +1585,7 @@ rules:
     message: "{{error}}"
     howToFix: Move the required parameters to the start of the parameters list.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1471,6 +1596,7 @@ rules:
     message: "{{error}}"
     howToFix: "Add minLength to the required string property, for example minLength: 1."
     given: $
+    resolved: false
     severity: info
     type: style
     then:
@@ -1481,6 +1607,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the parameter; describe the media type with content keys and authentication with security schemes.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1495,6 +1622,7 @@ rules:
     message: "{{error}}"
     howToFix: Return the schema that the GET operation of the resource returns.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1505,6 +1633,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the schemas to <Canonical>Collection, <Canonical>Prototype and <Canonical>Patch.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1515,6 +1644,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the missing header to the headers of the response.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1525,6 +1655,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the required property to the response schema.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1535,6 +1666,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a content map describing the payload, or use a status code that has no body.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1548,6 +1680,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the property to the required list of the schema, and always return it.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1560,6 +1693,7 @@ rules:
     message: "{{error}}"
     howToFix: "Use the status codes recommended by the message: 400 for 422, 303 or 307 for 302, 201 for creates, and so on."
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1570,6 +1704,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a description to the schema.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1581,6 +1716,7 @@ rules:
     message: "{{error}}"
     howToFix: Change the type, remove the keyword or fix the bounds.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1591,6 +1727,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a description to the property.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1601,6 +1738,7 @@ rules:
     message: "{{error}}"
     howToFix: Use a standard type and a format that is valid for that type.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1640,6 +1778,7 @@ rules:
     message: "{{error}}"
     howToFix: Declare type array next to items and type object next to properties, or remove the keyword.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1653,6 +1792,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1666,6 +1806,7 @@ rules:
     message: "{{error}}"
     howToFix: Define the scheme in components.securitySchemes or declare the scope in the oauth2 flows.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1679,6 +1820,7 @@ rules:
     given: $
     formats:
       - oas3
+    resolved: false
     severity: error
     type: style
     then:
@@ -1691,6 +1833,7 @@ rules:
     message: "{{error}}"
     howToFix: Give every server variable a non-empty default that is part of its enum, and define all URL placeholders.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1702,6 +1845,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the missing variable to server.variables or remove the unused one.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1712,6 +1856,7 @@ rules:
     message: "{{error}}"
     howToFix: "Add x-internal: true or x-internal: false to the server object."
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1725,6 +1870,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1735,6 +1881,7 @@ rules:
     message: "{{error}}"
     howToFix: Keep a single version segment in the path.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1745,6 +1892,7 @@ rules:
     message: "{{error}}"
     howToFix: Review the parameter for server-side request forgery and rename or suppress it.
     given: $
+    resolved: false
     severity: info
     type: validation
     then:
@@ -1756,6 +1904,7 @@ rules:
     message: "{{error}}"
     howToFix: Inline the referenced object, or move the $ref to an object that the specification allows to be a reference.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1766,6 +1915,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the missing pattern, minLength and maxLength keywords to the string schema, or remove them from non-string schemas.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1779,6 +1929,7 @@ rules:
     message: "{{error}}"
     howToFix: Use an integer minLength of at least 1 and keep minLength and maxLength within the ceiling.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1791,6 +1942,7 @@ rules:
     message: "{{error}}"
     howToFix: Add an example or examples keyword to the media type, or an example to its schema.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1803,6 +1955,7 @@ rules:
     message: "{{error}}"
     howToFix: Add content with a schema to the success response.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1816,6 +1969,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the trailing period from the operation summary.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1826,6 +1980,7 @@ rules:
     message: "{{error}}"
     howToFix: Add the X-B3-TraceId and X-B3-SpanId header parameters, or the traceparent header parameter.
     given: $
+    resolved: false
     severity: error
     type: style
     then:
@@ -1839,6 +1994,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1849,6 +2005,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename or merge the duplicated tags.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1860,6 +2017,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the 405 response, or remove the methods the server does not implement.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1881,6 +2039,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1894,6 +2053,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove the unused tag or add it to an operation.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1904,6 +2064,7 @@ rules:
     message: "{{error}}"
     howToFix: Correct the URL, and make it absolute where the field requires it.
     given: $
+    resolved: false
     severity: error
     type: validation
     then:
@@ -1914,6 +2075,7 @@ rules:
     message: "{{error}}"
     howToFix: Use a media type of the form type/subtype, such as application/json.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1936,6 +2098,7 @@ rules:
     given: $
     formats:
       - oas3_1
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -1948,6 +2111,7 @@ rules:
     message: "{{error}}"
     howToFix: Remove either properties or additionalProperties, and give the dictionary values a single type.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1961,6 +2125,7 @@ rules:
     message: "{{error}}"
     howToFix: Give id the type string, and created and modified the type string with format date-time.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1979,6 +2144,7 @@ rules:
     message: "{{error}}"
     howToFix: Spell the enum value in snake_case or SCREAMING_SNAKE_CASE.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -1989,6 +2155,7 @@ rules:
     message: "{{error}}"
     howToFix: Rename the parameter to kebab case or snake case.
     given: $
+    resolved: false
     severity: warn
     type: style
     then:
@@ -2000,6 +2167,7 @@ rules:
     message: "{{error}}"
     howToFix: Add a requestBody to the operation.
     given: $
+    resolved: false
     severity: warn
     type: validation
     then:
@@ -2014,6 +2182,7 @@ rules:
     message: "{{error}}"
     howToFix: Return the resource in the response content, or declare a Location header for 201 and 204.
     given: $
+    resolved: false
     severity: info
     type: style
     then:

@@ -21,6 +21,7 @@ import (
 	extra "github.com/mridang/vacuum-plugin-extra"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
+	"github.com/mridang/vacuum-plugin-extra/rules"
 )
 
 // Exit codes returned by Run.
@@ -197,6 +198,14 @@ func loadRuleset(path string) (*rulesets.RuleSet, error) {
 	set, err := rulesets.CreateRuleSetFromData(data)
 	if err != nil {
 		return nil, fmt.Errorf("parse ruleset: %w", err)
+	}
+
+	// vacuum resolves $refs in place for rules that do not say resolved: false,
+	// and these rules read the $ref nodes themselves.
+	for id, rule := range set.Rules {
+		if strings.HasPrefix(id, rules.IDPrefix) {
+			rule.Resolved = false
+		}
 	}
 
 	return set, nil
