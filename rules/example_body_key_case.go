@@ -3,19 +3,13 @@ package rules
 import (
 	"slices"
 	"strings"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
-)
-
-const (
-	exampleBodyKeyCaseOption  = "style"
-	exampleBodyKeyCaseDefault = "snake-case"
 )
 
 // ExampleBodyKeyCase returns the extra-example-body-key-case rule.
@@ -25,8 +19,8 @@ const (
 // Property names inside example bodies must follow the configured case style.
 // The examples checked are the example and examples[*].value of every JSON media
 // type in request bodies and responses, inline or under components. Nested
-// objects and arrays are walked, and every mapping key is compared with the
-// re-cased form of itself.
+// objects and arrays are walked, and every mapping key must follow
+// the configured convention.
 //
 // # Why
 //
@@ -41,9 +35,10 @@ const (
 //
 // # Options
 //
-//   - style (string, default "snake-case"): one of snake-case, dash-case,
-//     camel-case (UpperCamelCase) or lower-camel-case. Any other value makes
-//     the rule do nothing.
+//   - casing (string or list, default "snake_case"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     lowercase. A key is accepted when it follows any listed convention, an
+//     empty list disables the rule and an unknown value is reported.
 //
 // # Bad
 //
@@ -75,13 +70,9 @@ func ExampleBodyKeyCase() Rule {
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
-			{
-				Name:        exampleBodyKeyCaseOption,
-				Description: "snake-case, dash-case, camel-case or lower-camel-case.",
-				Default:     exampleBodyKeyCaseDefault,
-			},
+			casingOption("Case convention of the example property names", casing.Snake),
 		},
-		Check: OnDocument(checkExampleBodyKeyCase),
+		Check: WithCasing(checkExampleBodyKeyCase),
 	})
 }
 
@@ -91,47 +82,31 @@ type exampleBodyKeyCaseExample struct {
 }
 
 // checkExampleBodyKeyCase walks every example body and compares key casing.
-func checkExampleBodyKeyCase(call *Call) []Finding {
-	style := call.String(exampleBodyKeyCaseOption)
-	if !exampleBodyKeyCaseKnownStyle(style) {
-		return nil
-	}
-
+func checkExampleBodyKeyCase(call *Call, allowed casing.Set) []Finding {
 	return seq.FlatMapSlice(exampleBodyKeyCaseExamples(call.Root), func(example exampleBodyKeyCaseExample) []Finding {
-		return exampleBodyKeyCaseWalk(example.node, example.path, style)
+		return exampleBodyKeyCaseWalk(example.node, example.path, allowed)
 	})
 }
 
-// exampleBodyKeyCaseKnownStyle reports whether the style is supported.
-func exampleBodyKeyCaseKnownStyle(style string) bool {
-	switch style {
-	case "snake-case", "dash-case", "camel-case", "lower-camel-case":
-		return true
-	default:
-		return false
-	}
-}
-
-// exampleBodyKeyCaseWalk reports the keys of one example value that are not in the style.
-func exampleBodyKeyCaseWalk(value *yaml.Node, path string, style string) []Finding {
+// exampleBodyKeyCaseWalk reports the keys of one example value that do not follow the casing.
+func exampleBodyKeyCaseWalk(value *yaml.Node, path string, allowed casing.Set) []Finding {
 	return slices.Concat(
-		exampleBodyKeyCaseKeys(value, path, style),
+		exampleBodyKeyCaseKeys(value, path, allowed),
 		seq.FlatMap(oas.Walk(value, path), func(node oas.Node) []Finding {
-			return exampleBodyKeyCaseKeys(node.Node, node.Path, style)
+			return exampleBodyKeyCaseKeys(node.Node, node.Path, allowed)
 		}),
 	)
 }
 
-// exampleBodyKeyCaseKeys reports the direct keys of a mapping that are not in the style.
-func exampleBodyKeyCaseKeys(mapping *yaml.Node, path string, style string) []Finding {
+// exampleBodyKeyCaseKeys reports the direct keys of a mapping that do not follow the casing.
+func exampleBodyKeyCaseKeys(mapping *yaml.Node, path string, allowed casing.Set) []Finding {
 	return seq.FlatMapPairs(oas.Pairs(mapping), func(key, _ *yaml.Node) []Finding {
-		expected := exampleBodyKeyCaseRecase(key.Value, style)
-
-		return When(key.Value != expected, func() Finding {
+		return When(!allowed.Matches(key.Value), func() Finding {
 			return Finding{
-				Node:    key,
-				Path:    oas.Join(path, key.Value),
-				Message: "example body property '" + key.Value + "' should be cased like '" + expected + "'",
+				Node: key,
+				Path: oas.Join(path, key.Value),
+				Message: "example body property '" + key.Value + "' must be " + allowed.String() +
+					" (for example '" + allowed.Convert(key.Value) + "')",
 			}
 		})
 	})
@@ -202,87 +177,4 @@ func exampleBodyKeyCaseOf(node *yaml.Node, path string) []exampleBodyKeyCaseExam
 	}
 
 	return []exampleBodyKeyCaseExample{{node: node, path: path}}
-}
-
-// exampleBodyKeyCaseRecase rewrites key in the given style.
-func exampleBodyKeyCaseRecase(key string, style string) string {
-	words := exampleBodyKeyCaseSplit(key)
-	if len(words) == 0 {
-		return key
-	}
-
-	switch style {
-	case "snake-case":
-		return strings.ToLower(strings.Join(words, "_"))
-	case "dash-case":
-		return strings.ToLower(strings.Join(words, "-"))
-	default:
-		return exampleBodyKeyCaseCamel(words, style == "camel-case")
-	}
-}
-
-// exampleBodyKeyCaseCamel joins words in camel case, capitalising the first word when upper is set.
-func exampleBodyKeyCaseCamel(words []string, upper bool) string {
-	return strings.Join(seq.FlatMapIndexed(words, func(i int, word string) []string {
-		return []string{exampleBodyKeyCaseCamelWord(word, upper || i > 0)}
-	}), "")
-}
-
-// exampleBodyKeyCaseCamelWord capitalises or lowers one word; all-capital words are kept as acronyms.
-func exampleBodyKeyCaseCamelWord(word string, capitalise bool) string {
-	if word == strings.ToUpper(word) {
-		if capitalise {
-			return word
-		}
-
-		return strings.ToLower(word)
-	}
-
-	lower := strings.ToLower(word)
-	if !capitalise {
-		return lower
-	}
-
-	first, size := utf8.DecodeRuneInString(lower)
-
-	return string(unicode.ToUpper(first)) + lower[size:]
-}
-
-// exampleBodyKeyCaseSplit splits a key into words on separators and case changes.
-func exampleBodyKeyCaseSplit(key string) []string {
-	return seq.FlatMapSlice(
-		strings.FieldsFunc(key, func(r rune) bool { return r == '-' || r == '_' }),
-		func(segment string) []string {
-			runes := []rune(segment)
-			bounds := slices.Concat(
-				[]int{0},
-				seq.FlatMapIndexed(runes, func(i int, _ rune) []int {
-					if !exampleBodyKeyCaseBoundary(runes, i) {
-						return nil
-					}
-
-					return []int{i}
-				}),
-				[]int{len(runes)},
-			)
-
-			return seq.FlatMapIndexed(bounds[:len(bounds)-1], func(n int, start int) []string {
-				return []string{string(runes[start:bounds[n+1]])}
-			})
-		},
-	)
-}
-
-// exampleBodyKeyCaseBoundary reports whether a new word starts at index i.
-func exampleBodyKeyCaseBoundary(runes []rune, i int) bool {
-	if i == 0 || !unicode.IsUpper(runes[i]) {
-		return false
-	}
-
-	previous := runes[i-1]
-	if unicode.IsLower(previous) || unicode.IsDigit(previous) {
-		return true
-	}
-
-	return unicode.IsUpper(previous) && i+1 < len(runes) && unicode.IsLower(runes[i+1])
 }

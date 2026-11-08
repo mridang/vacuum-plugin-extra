@@ -1,12 +1,10 @@
 package rules
 
 import (
-	"slices"
-	"strings"
-
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -18,12 +16,13 @@ const enumValueCaseStrTag = "!!str"
 //
 // # What it checks
 //
-// Every string value of an enum must be written in snake_case or in
-// SCREAMING_SNAKE_CASE. Null and non-string values are ignored. A value is
-// snake_case when it consists of lower-case letters and digits separated by
-// single underscores, and SCREAMING_SNAKE_CASE when it consists of upper-case
-// letters and digits separated by single underscores. Mixed case, hyphens,
-// spaces and leading, trailing or doubled underscores are reported.
+// Every string value of an enum must follow one of the configured case
+// conventions, snake_case or SCREAMING_SNAKE_CASE by default. Null and
+// non-string values are ignored. A value is snake_case when it consists of
+// lower-case letters and digits separated by single underscores, and
+// SCREAMING_SNAKE_CASE when it consists of upper-case letters and digits
+// separated by single underscores. Mixed case, hyphens, spaces and leading,
+// trailing or doubled underscores are reported by those defaults.
 //
 // # Why
 //
@@ -39,8 +38,11 @@ const enumValueCaseStrTag = "!!str"
 //
 // # Options
 //
-//   - allowSnake: accept snake_case values. Default: true.
-//   - allowScreamingSnake: accept SCREAMING_SNAKE_CASE values. Default: true.
+//   - casing (string or list, default [snake_case, SCREAMING_SNAKE_CASE]):
+//     kebab-case, snake_case, camelCase, PascalCase, SCREAMING_SNAKE_CASE,
+//     SCREAMING-KEBAB-CASE or lowercase. A value is accepted when it follows
+//     any listed convention, an empty list disables the rule and an unknown
+//     value is reported.
 //
 // # Bad
 //
@@ -66,76 +68,37 @@ const enumValueCaseStrTag = "!!str"
 func EnumValueCase() Rule {
 	return New(Spec{
 		Name:        "enum-value-case",
-		Description: "String enum values must be snake_case or SCREAMING_SNAKE_CASE.",
-		HowToFix:    "Rename the enum value to snake_case or SCREAMING_SNAKE_CASE.",
+		Description: "String enum values must follow the configured case convention, snake_case or SCREAMING_SNAKE_CASE by default.",
+		HowToFix:    "Rename the enum value to the configured case convention.",
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
-			{
-				Name:        "allowSnake",
-				Description: "Accept snake_case enum values.",
-				Default:     true,
-			},
-			{
-				Name:        "allowScreamingSnake",
-				Description: "Accept SCREAMING_SNAKE_CASE enum values.",
-				Default:     true,
-			},
+			casingOption("Case conventions of the enum values", casing.Snake, casing.ScreamingSnake),
 		},
-		Check: PerSchema(checkEnumValueCase),
+		Check: WithCasing(checkEnumValueCase),
 	})
 }
 
-func checkEnumValueCase(call *Call, schema oas.Schema) []Finding {
-	snake := call.Bool("allowSnake")
-	screaming := call.Bool("allowScreamingSnake")
-	enumPath := oas.Join(schema.Path, "enum")
+func checkEnumValueCase(call *Call, allowed casing.Set) []Finding {
+	return PerSchema(func(_ *Call, schema oas.Schema) []Finding {
+		enumPath := oas.Join(schema.Path, "enum")
 
-	return seq.FlatMapPairs(oas.Items(oas.Get(schema.Node, "enum")), func(i int, value *yaml.Node) []Finding {
-		invalid := enumValueCaseIsString(value) && !enumValueCaseAccepted(value.Value, snake, screaming)
+		return seq.FlatMapPairs(oas.Items(oas.Get(schema.Node, "enum")), func(i int, value *yaml.Node) []Finding {
+			invalid := enumValueCaseIsString(value) && !allowed.Matches(value.Value)
 
-		return When(invalid, func() Finding {
-			return Finding{
-				Node:    value,
-				Path:    oas.Index(enumPath, i),
-				Message: "enum value '" + value.Value + "' must be " + enumValueCaseWanted(snake, screaming),
-			}
+			return When(invalid, func() Finding {
+				return Finding{
+					Node:    value,
+					Path:    oas.Index(enumPath, i),
+					Message: "enum value '" + value.Value + "' must be " + allowed.String(),
+				}
+			})
 		})
-	})
+	})(call)
 }
 
 // enumValueCaseIsString reports whether the node is a string scalar.
 func enumValueCaseIsString(node *yaml.Node) bool {
 	return oas.IsScalar(node) && !oas.IsNull(node) && (node.Tag == "" || node.Tag == enumValueCaseStrTag)
-}
-
-// enumValueCaseWanted describes the accepted casings for a message.
-func enumValueCaseWanted(snake, screaming bool) string {
-	switch {
-	case snake && screaming:
-		return "snake_case or SCREAMING_SNAKE_CASE"
-	case screaming:
-		return "SCREAMING_SNAKE_CASE"
-	default:
-		return "snake_case"
-	}
-}
-
-// enumValueCaseAccepted reports whether the value has an accepted casing.
-func enumValueCaseAccepted(value string, snake, screaming bool) bool {
-	return (snake && enumValueCaseIsSnake(value, false)) || (screaming && enumValueCaseIsSnake(value, true))
-}
-
-// enumValueCaseIsSnake reports whether value is made of non-empty words of
-// letters and digits joined by single underscores, all in the requested case.
-func enumValueCaseIsSnake(value string, upper bool) bool {
-	return value != "" && !slices.ContainsFunc(strings.Split(value, "_"), func(word string) bool {
-		return word == "" || strings.ContainsFunc(word, func(r rune) bool {
-			digit := r >= '0' && r <= '9'
-			letter := (!upper && r >= 'a' && r <= 'z') || (upper && r >= 'A' && r <= 'Z')
-
-			return !digit && !letter
-		})
-	})
 }

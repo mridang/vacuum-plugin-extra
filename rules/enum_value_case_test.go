@@ -83,7 +83,7 @@ paths:
 `), nil, "$.paths['/pets'].get.parameters[0].schema.enum[0]")
 	})
 
-	t.Run("honours the casing options", func(t *testing.T) {
+	t.Run("honours the casing option", func(t *testing.T) {
 		t.Parallel()
 
 		document := ruletest.Doc30(`
@@ -94,9 +94,9 @@ components:
       enum: [done, DONE]
 `)
 
-		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowScreamingSnake": false},
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "snake_case"},
 			"$.components.schemas.Status.enum[1]")
-		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowSnake": false},
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": []string{"SCREAMING_SNAKE_CASE"}},
 			"$.components.schemas.Status.enum[0]")
 	})
 }

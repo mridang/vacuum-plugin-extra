@@ -42,11 +42,11 @@ func TestPathParameterCase(t *testing.T) {
 		require.Contains(t, results[0].Message, "petId")
 	})
 
-	t.Run("honours the style option", func(t *testing.T) {
+	t.Run("honours the casing option", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc30(pathParameterCaseDocument),
-			ruletest.Options{"style": "camel"},
+			ruletest.Options{"casing": "camelCase"},
 			"$.paths['/owners/{owner_id}/pets/{pet_id}']",
 			"$.paths['/owners/{owner_id}/pets/{pet_id}']",
 		)
@@ -68,12 +68,5 @@ paths:
         "200":
           description: ok
 `), nil)
-	})
-
-	t.Run("an unknown style disables the rule", func(t *testing.T) {
-		t.Parallel()
-
-		ruletest.RequireClean(t, rule, ruletest.Doc30(pathParameterCaseDocument),
-			ruletest.Options{"style": "none"})
 	})
 }

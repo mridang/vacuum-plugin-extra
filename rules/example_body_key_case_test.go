@@ -43,7 +43,7 @@ paths:
 		require.Contains(
 			t,
 			ruletest.Messages(results),
-			"example body property 'firstName' should be cased like 'first_name'",
+			"example body property 'firstName' must be snake_case (for example 'first_name')",
 		)
 	})
 
@@ -68,7 +68,7 @@ paths:
 `), nil)
 	})
 
-	t.Run("checks named examples and honours the style option", func(t *testing.T) {
+	t.Run("checks named examples and honours the casing option", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
@@ -86,11 +86,11 @@ paths:
       responses:
         "200":
           description: ok
-`), ruletest.Options{"style": "lower-camel-case"},
+`), ruletest.Options{"casing": "camelCase"},
 			"$.paths['/pets'].post.requestBody.content['application/json'].examples.basic.value.first_name")
 	})
 
-	t.Run("supports dash case and acronyms", func(t *testing.T) {
+	t.Run("supports kebab case and acronyms", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
@@ -103,10 +103,10 @@ components:
           example:
             user-id: 1
             userID: 2
-`), ruletest.Options{"style": "dash-case"}, "$.components.responses.Ok.content['application/json'].example.userID")
+`), ruletest.Options{"casing": "kebab-case"}, "$.components.responses.Ok.content['application/json'].example.userID")
 	})
 
-	t.Run("ignores non json media types and unknown styles", func(t *testing.T) {
+	t.Run("ignores non json media types", func(t *testing.T) {
 		t.Parallel()
 
 		doc := ruletest.Doc30(`
@@ -122,6 +122,5 @@ paths:
                 firstName: Ada
 `)
 		ruletest.RequireClean(t, rule, doc, nil)
-		ruletest.RequireClean(t, rule, doc, ruletest.Options{"style": "shouty"})
 	})
 }

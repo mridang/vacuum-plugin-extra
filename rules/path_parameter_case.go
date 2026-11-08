@@ -1,29 +1,23 @@
 package rules
 
 import (
-	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/daveshanley/vacuum/model"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
-
-// pathParameterCaseSnake is the default style.
-const pathParameterCaseSnake = "snake"
-
-// pathParameterCaseStyle is the option that selects the convention.
-const pathParameterCaseStyle = "style"
 
 // PathParameterCase returns the extra-path-parameter-case rule.
 //
 // # What it checks
 //
 // Every variable of a URI template in a path key, such as petId in
-// /pets/{petId}, must follow the configured case style. The style option
-// accepts snake (the default), camel, pascal, kebab and screaming-snake.
+// /pets/{petId}, must follow the configured case style. The shared casing
+// option selects the convention, snake_case by default.
 //
 // # Why
 //
@@ -38,8 +32,10 @@ const pathParameterCaseStyle = "style"
 //
 // # Options
 //
-//   - style (string, default "snake"): snake, camel, pascal, kebab or
-//     screaming-snake. An empty or unknown style disables the rule.
+//   - casing (string or list, default "snake_case"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     lowercase. A list accepts a variable that follows any of them, an empty
+//     list disables the rule and an unknown value is reported.
 //
 // # Bad
 //
@@ -73,49 +69,21 @@ func PathParameterCase() Rule {
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
-			{
-				Name:        pathParameterCaseStyle,
-				Description: "Case style: snake, camel, pascal, kebab or screaming-snake.",
-				Default:     pathParameterCaseSnake,
-			},
+			casingOption("Case style of the path variables", casing.Snake),
 		},
-		Check: OnDocument(checkPathParameterCase),
+		Check: WithCasing(checkPathParameterCase),
 	})
 }
 
-// pathParameterCaseExpression returns the expression of a style, or nil.
-func pathParameterCaseExpression(style string) *regexp.Regexp {
-	expressions := map[string]string{
-		literalSnake:      `^[a-z][a-z0-9]*(_[a-z0-9]+)*$`,
-		"camel":           `^[a-z][a-zA-Z0-9]*$`,
-		literalPascal:     `^[A-Z][a-zA-Z0-9]*$`,
-		"kebab":           `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`,
-		"screaming-snake": `^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`,
-	}
-
-	source, ok := expressions[style]
-	if !ok {
-		return nil
-	}
-
-	return regexp.MustCompile(source)
-}
-
 // checkPathParameterCase reports template variables in the wrong case.
-func checkPathParameterCase(call *Call) []Finding {
-	style := call.String(pathParameterCaseStyle)
-	expression := pathParameterCaseExpression(style)
-	if expression == nil {
-		return nil
-	}
-
+func checkPathParameterCase(call *Call, allowed casing.Set) []Finding {
 	return PerPathItem(func(_ *Call, item oas.PathItem) []Finding {
 		return seq.FlatMapSlice(pathParameterCaseVariables(item.Route), func(variable string) []Finding {
-			return When(!expression.MatchString(variable), func() Finding {
+			return When(!allowed.Matches(variable), func() Finding {
 				return Finding{
 					Node:    item.KeyNode,
 					Path:    item.Path,
-					Message: "path parameter " + variable + " must be " + style + " case",
+					Message: "path parameter " + variable + " must be " + allowed.String(),
 				}
 			})
 		})

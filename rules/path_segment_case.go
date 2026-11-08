@@ -2,18 +2,15 @@ package rules
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 
 	"github.com/daveshanley/vacuum/model"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
-
-// pathSegmentCaseDefault is the case convention applied when none is given.
-const pathSegmentCaseDefault = "kebab"
 
 // PathSegmentCase returns the extra-path-segment-case rule.
 //
@@ -40,10 +37,11 @@ const pathSegmentCaseDefault = "kebab"
 //
 // # Options
 //
-//   - case (string, default "kebab"): one of kebab (lower case words joined by
-//     hyphens), snake (lower case words joined by underscores), camel
-//     (lowerCamelCase), pascal (UpperCamelCase) and lower (lower case letters
-//     and digits only). An unknown value falls back to kebab.
+//   - casing (string or list, default "kebab-case"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     lowercase. A list accepts a segment that follows any of them, an empty
+//     list skips the segment check (the shape checks remain) and an unknown
+//     value is reported.
 //
 // # Bad
 //
@@ -73,41 +71,21 @@ func PathSegmentCase() Rule {
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
-			{
-				Name:        "case",
-				Description: "The case convention of literal segments: kebab, snake, camel, pascal or lower.",
-				Default:     pathSegmentCaseDefault,
-			},
+			casingOption("Case convention of the literal path segments", casing.Kebab),
 		},
-		Check: PerPathItem(checkPathSegmentCase),
+		Check: WithCasing(checkPathSegmentCase),
 	})
 }
 
-func pathSegmentCasePattern(name string) string {
-	switch name {
-	case literalSnake:
-		return `^[a-z0-9]+(_[a-z0-9]+)*$`
-	case pathSegmentCaseCamel:
-		return `^[a-z0-9][a-zA-Z0-9]*$`
-	case literalPascal:
-		return pathSegmentCasePascalPattern
-	case "lower":
-		return `^[a-z0-9]+$`
-	default:
-		return `^[a-z0-9]+(-[a-z0-9]+)*$`
-	}
+func checkPathSegmentCase(call *Call, allowed casing.Set) []Finding {
+	return PerPathItem(func(_ *Call, item oas.PathItem) []Finding {
+		return seq.FlatMapSlice(pathSegmentCaseProblems(item.Route, allowed), func(problem string) []Finding {
+			return One(Finding{Node: item.KeyNode, Path: item.Path, Message: problem})
+		})
+	})(call)
 }
 
-func checkPathSegmentCase(call *Call, item oas.PathItem) []Finding {
-	convention := call.String("case")
-	pattern := regexp.MustCompile(pathSegmentCasePattern(convention))
-
-	return seq.FlatMapSlice(pathSegmentCaseProblems(item.Route, convention, pattern), func(problem string) []Finding {
-		return One(Finding{Node: item.KeyNode, Path: item.Path, Message: problem})
-	})
-}
-
-func pathSegmentCaseProblems(route, convention string, pattern *regexp.Regexp) []string {
+func pathSegmentCaseProblems(route string, allowed casing.Set) []string {
 	segments := strings.Split(strings.Trim(route, "/"), "/")
 
 	return slices.Concat(
@@ -118,10 +96,10 @@ func pathSegmentCaseProblems(route, convention string, pattern *regexp.Regexp) [
 			"path "+route+" must not contain empty segments",
 		),
 		seq.FlatMapSlice(segments, func(segment string) []string {
-			valid := segment == "" || strings.Contains(segment, "{") || pattern.MatchString(segment)
+			valid := segment == "" || strings.Contains(segment, "{") || allowed.Matches(segment)
 
 			return pathSegmentCaseWhen(!valid, fmt.Sprintf(
-				"path segment %q of %s must be in %s case", segment, route, pathSegmentCaseName(convention),
+				"path segment %q of %s must be %s", segment, route, allowed,
 			))
 		}),
 	)
@@ -136,18 +114,3 @@ func pathSegmentCaseWhen(condition bool, problem string) []string {
 
 	return []string{problem}
 }
-
-func pathSegmentCaseName(convention string) string {
-	switch convention {
-	case "snake", pathSegmentCaseCamel, "pascal", "lower":
-		return convention
-	default:
-		return pathSegmentCaseDefault
-	}
-}
-
-// Keyword names used by this rule.
-const (
-	pathSegmentCaseCamel         = "camel"
-	pathSegmentCasePascalPattern = `^[A-Z][a-zA-Z0-9]*$`
-)
