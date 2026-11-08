@@ -13,18 +13,18 @@ paths:
               schema:
                 type: object
                 properties:
-                  firstName: {type: string}
-                  owner_id: {type: integer}
+                  firstName: { type: string }
+                  owner_id: { type: integer }
                   address:
                     type: object
                     properties:
-                      zipCode: {type: string}
+                      zipCode: { type: string }
                   tags:
                     type: array
                     items:
                       type: object
                       properties:
-                        lastSeen: {type: string}
+                        lastSeen: { type: string }
               example:
                 firstName: Ada
                 owner_id: 1
