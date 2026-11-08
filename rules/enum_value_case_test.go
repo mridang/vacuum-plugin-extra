@@ -99,4 +99,22 @@ components:
 		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": []string{"SCREAMING_SNAKE_CASE"}},
 			"$.components.schemas.Status.enum[0]")
 	})
+
+	t.Run("dot.case accepts namespaced values alongside the defaults", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc30(`
+components:
+  schemas:
+    Event:
+      type: string
+      enum: [auth.factor.password.set, in_progress, DONE, Mixed.Case]
+`)
+
+		ruletest.RequirePaths(t, rule, document, nil,
+			"$.components.schemas.Event.enum[0]", "$.components.schemas.Event.enum[3]")
+		ruletest.RequirePaths(t, rule, document,
+			ruletest.Options{"casing": []string{"snake_case", "SCREAMING_SNAKE_CASE", "dot.case"}},
+			"$.components.schemas.Event.enum[3]")
+	})
 }

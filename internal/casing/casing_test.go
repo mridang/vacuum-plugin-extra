@@ -23,6 +23,7 @@ func samples() []sample {
 		{casing.Pascal, "PetOwner"},
 		{casing.ScreamingSnake, "PET_OWNER"},
 		{casing.ScreamingKebab, "PET-OWNER"},
+		{casing.Dot, "pet.owner"},
 	}
 }
 
@@ -86,6 +87,9 @@ func TestCasingMatchesEdgeCases(t *testing.T) {
 		{"trailing separator is rejected", casing.Snake, "pet_", false},
 		{"mixed separators are rejected", casing.Kebab, "pet-owner_id", false},
 		{"non ascii letters are rejected", casing.Snake, "pét", false},
+		{"dot accepts namespaced names", casing.Dot, "auth.factor.password.set", true},
+		{"dot rejects a trailing dot", casing.Dot, "auth.", false},
+		{"dot rejects capitals", casing.Dot, "auth.Factor", false},
 		{"unknown casing matches nothing", casing.Casing("shouty"), "pet", false},
 	}
 
@@ -132,7 +136,7 @@ func TestParse(t *testing.T) {
 
 	_, err := casing.Parse("snake")
 	require.EqualError(t, err, `unknown casing "snake": allowed values are `+
-		`kebab-case, snake_case, camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, lowercase`)
+		`kebab-case, snake_case, camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case, lowercase`)
 	require.ErrorAs(t, err, &casing.UnknownError{})
 }
 

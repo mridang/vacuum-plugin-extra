@@ -26,6 +26,8 @@ const (
 	ScreamingSnake Casing = "SCREAMING_SNAKE_CASE"
 	// ScreamingKebab is upper case words joined by hyphens: PET-OWNER.
 	ScreamingKebab Casing = "SCREAMING-KEBAB-CASE"
+	// Dot is lower case words joined by dots: pet.owner.
+	Dot Casing = "dot.case"
 	// Lower is lower case letters and digits only, with no separator: petowner.
 	Lower Casing = "lowercase"
 )
@@ -43,7 +45,7 @@ func (e UnknownError) Error() string {
 
 // All returns every supported casing.
 func All() []Casing {
-	return []Casing{Kebab, Snake, Camel, Pascal, ScreamingSnake, ScreamingKebab, Lower}
+	return []Casing{Kebab, Snake, Camel, Pascal, ScreamingSnake, ScreamingKebab, Dot, Lower}
 }
 
 // Names returns the accepted option values, one per casing.
@@ -75,6 +77,8 @@ func (c Casing) Matches(name string) bool {
 		return joined(name, '-', isUpperOrDigit)
 	case ScreamingSnake:
 		return joined(name, '_', isUpperOrDigit)
+	case Dot:
+		return joined(name, '.', isLowerOrDigit)
 	case Lower:
 		return name != "" && !strings.ContainsFunc(name, func(r rune) bool { return !isLowerOrDigit(r) })
 	case Camel:
@@ -104,6 +108,8 @@ func (c Casing) Convert(name string) string {
 		return strings.ToUpper(strings.Join(words, "-"))
 	case ScreamingSnake:
 		return strings.ToUpper(strings.Join(words, "_"))
+	case Dot:
+		return strings.ToLower(strings.Join(words, "."))
 	case Lower:
 		return strings.ToLower(strings.Join(words, ""))
 	case Camel:

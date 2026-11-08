@@ -41,7 +41,7 @@ const (
 // # Options
 //
 //   - casing (string or list, default "snake_case"): kebab-case, snake_case,
-//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case or
 //     lowercase. A list accepts an identifier that follows any of them, an empty
 //     list disables the casing check and an unknown value is reported.
 //   - strictCharset (bool, default false): require [a-zA-Z0-9_]+.

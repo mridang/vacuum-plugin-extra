@@ -30,7 +30,8 @@ func casingSamples() []casingSample {
 		{"PetOwner", []casing.Casing{casing.Pascal}},
 		{"PET_OWNER", []casing.Casing{casing.ScreamingSnake}},
 		{"PET-OWNER", []casing.Casing{casing.ScreamingKebab}},
-		{"petowner", []casing.Casing{casing.Kebab, casing.Snake, casing.Camel, casing.Lower}},
+		{"pet.owner", []casing.Casing{casing.Dot}},
+		{"petowner", []casing.Casing{casing.Kebab, casing.Snake, casing.Camel, casing.Dot, casing.Lower}},
 	}
 }
 
@@ -101,6 +102,8 @@ func casingRules() []casingRule {
 			document: func(names []string) string {
 				return ruletest.Doc30("paths:\n  /pets:\n    get:\n      responses:\n        \"200\":\n" +
 					"          description: ok\n          content:\n            application/json:\n" +
+					"              schema:\n                type: object\n                properties:\n" +
+					lines(names, "                  %s:\n                    type: integer\n") +
 					"              example:\n" + lines(names, "                %s: 1\n"))
 			},
 			path: func(_ int, name string) string {
@@ -112,7 +115,7 @@ func casingRules() []casingRule {
 
 // member renders a mapping key as a JSONPath segment, bracketed when it has a hyphen.
 func member(name string) string {
-	if strings.Contains(name, "-") {
+	if strings.ContainsAny(name, "-.") {
 		return "['" + name + "']"
 	}
 

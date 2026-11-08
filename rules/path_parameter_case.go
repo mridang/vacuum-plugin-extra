@@ -33,7 +33,7 @@ import (
 // # Options
 //
 //   - casing (string or list, default "snake_case"): kebab-case, snake_case,
-//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case or
 //     lowercase. A list accepts a variable that follows any of them, an empty
 //     list disables the rule and an unknown value is reported.
 //

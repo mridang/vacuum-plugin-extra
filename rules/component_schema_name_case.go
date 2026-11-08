@@ -39,7 +39,7 @@ const componentSchemaNameCaseIgnore = "ignore"
 // # Options
 //
 //   - casing (string or list, default "PascalCase"): kebab-case, snake_case,
-//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case or
 //     lowercase. A name is accepted when it follows any listed convention, an
 //     empty list disables the casing check and an unknown value is reported.
 //   - ignore (string or list of regular expressions, default none): schema

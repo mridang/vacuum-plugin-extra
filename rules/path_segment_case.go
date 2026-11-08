@@ -38,7 +38,7 @@ import (
 // # Options
 //
 //   - casing (string or list, default "kebab-case"): kebab-case, snake_case,
-//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE or
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case or
 //     lowercase. A list accepts a segment that follows any of them, an empty
 //     list skips the segment check (the shape checks remain) and an unknown
 //     value is reported.

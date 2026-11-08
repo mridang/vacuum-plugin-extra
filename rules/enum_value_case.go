@@ -40,7 +40,7 @@ const enumValueCaseStrTag = "!!str"
 //
 //   - casing (string or list, default [snake_case, SCREAMING_SNAKE_CASE]):
 //     kebab-case, snake_case, camelCase, PascalCase, SCREAMING_SNAKE_CASE,
-//     SCREAMING-KEBAB-CASE or lowercase. A value is accepted when it follows
+//     SCREAMING-KEBAB-CASE, dot.case or lowercase. A value is accepted when it follows
 //     any listed convention, an empty list disables the rule and an unknown
 //     value is reported.
 //
