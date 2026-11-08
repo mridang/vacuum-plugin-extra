@@ -5,15 +5,11 @@ import (
 
 	"github.com/daveshanley/vacuum/model"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 )
 
-// operationIDCasingSnake is the default style.
-const operationIDCasingSnake = "snake"
-
 const (
-	// operationIDCasingStyle is the option that selects the convention.
-	operationIDCasingStyle = "style"
 	// operationIDCasingStrictCharset is the option that restricts the characters.
 	operationIDCasingStrictCharset = "strictCharset"
 	// operationIDCasingCharset is the strict character set of an operationId.
@@ -25,8 +21,8 @@ const (
 // # What it checks
 //
 // The operationId of every operation must follow a case convention, snake_case
-// by default. The style option selects one of snake, camel, pascal, kebab or
-// screaming-snake. With strictCharset the operationId must in addition consist
+// by default. The shared casing option selects one or more of the conventions
+// of the internal casing package. With strictCharset the operationId must in addition consist
 // only of letters, digits and underscores, which rejects hyphens, dots and
 // other separators regardless of the style.
 //
@@ -44,8 +40,10 @@ const (
 //
 // # Options
 //
-//   - style (string, default "snake"): snake, camel, pascal, kebab or
-//     screaming-snake. An empty or unknown style disables the casing check.
+//   - casing (string or list, default "snake_case"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case or
+//     lowercase. A list accepts an identifier that follows any of them, an empty
+//     list disables the casing check and an unknown value is reported.
 //   - strictCharset (bool, default false): require [a-zA-Z0-9_]+.
 //
 // # Bad
@@ -75,43 +73,19 @@ func OperationIDCasing() Rule {
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
-			{
-				Name:        operationIDCasingStyle,
-				Description: "Convention: snake, camel, pascal, kebab or screaming-snake.",
-				Default:     operationIDCasingSnake,
-			},
+			casingOption("Convention of the operationId", casing.Snake),
 			{
 				Name:        operationIDCasingStrictCharset,
 				Description: "Require operationId to match [a-zA-Z0-9_]+.",
 				Default:     false,
 			},
 		},
-		Check: OnDocument(checkOperationIDCasing),
+		Check: WithCasing(checkOperationIDCasing),
 	})
 }
 
-// operationIDCasingExpression returns the expression of a style, or nil.
-func operationIDCasingExpression(style string) *regexp.Regexp {
-	expressions := map[string]string{
-		literalSnake:      `^[a-z][a-z0-9]*(_[a-z0-9]+)*$`,
-		"camel":           `^[a-z][a-zA-Z0-9]*$`,
-		literalPascal:     `^[A-Z][a-zA-Z0-9]*$`,
-		"kebab":           `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`,
-		"screaming-snake": `^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$`,
-	}
-
-	source, ok := expressions[style]
-	if !ok {
-		return nil
-	}
-
-	return regexp.MustCompile(source)
-}
-
 // checkOperationIDCasing reports operation identifiers that break the convention.
-func checkOperationIDCasing(call *Call) []Finding {
-	style := call.String(operationIDCasingStyle)
-	casing := operationIDCasingExpression(style)
+func checkOperationIDCasing(call *Call, allowed casing.Set) []Finding {
 	charset := regexp.MustCompile(operationIDCasingCharset)
 	strict := call.Bool(operationIDCasingStrictCharset)
 
@@ -131,11 +105,11 @@ func checkOperationIDCasing(call *Call) []Finding {
 			})
 		}
 
-		return When(casing != nil && !casing.MatchString(id.Value), func() Finding {
+		return When(!allowed.Matches(id.Value), func() Finding {
 			return Finding{
 				Node:    id,
 				Path:    path,
-				Message: "operationId " + id.Value + " must be " + style + " case",
+				Message: "operationId " + id.Value + " must be " + allowed.String(),
 			}
 		})
 	})(call)
