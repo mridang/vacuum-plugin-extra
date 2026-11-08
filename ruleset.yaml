@@ -1567,7 +1567,26 @@ rules:
     type: style
     then:
       function: extra-required-string-min-length
-      functionOptions: {}
+      functionOptions:
+        shapedFormats:
+          - date
+          - date-time
+          - time
+          - duration
+          - uuid
+          - uri
+          - uri-reference
+          - iri
+          - url
+          - email
+          - idn-email
+          - hostname
+          - idn-hostname
+          - ipv4
+          - ipv6
+          - json-pointer
+          - regex
+          - byte
   extra-reserved-header-parameter:
     description: Header parameters must not use the reserved names Accept, Content-Type or Authorization.
     message: "{{error}}"
@@ -1901,6 +1920,25 @@ rules:
         requireMaxLength: true
         requireMinLength: true
         requirePattern: true
+        shapedFormats:
+          - date
+          - date-time
+          - time
+          - duration
+          - uuid
+          - uri
+          - uri-reference
+          - iri
+          - url
+          - email
+          - idn-email
+          - hostname
+          - idn-hostname
+          - ipv4
+          - ipv6
+          - json-pointer
+          - regex
+          - byte
   extra-string-length-limits:
     description: minLength must be a positive integer and string lengths must not exceed 4 MiB.
     message: "{{error}}"
