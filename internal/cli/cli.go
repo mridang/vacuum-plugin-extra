@@ -36,9 +36,11 @@ const (
 )
 
 const (
-	formatText   = "text"
-	formatJSON   = "json"
-	severityNone = "none"
+	formatText = "text"
+	formatJSON = "json"
+	// failNever is the -fail-on value that never fails the run. It is not a rule
+	// severity: a rule is switched off with severity off.
+	failNever = "none"
 )
 
 // ErrUsage is returned for invalid command lines.
@@ -227,7 +229,7 @@ func lint(opts options) ([]Finding, error) {
 		return nil, err
 	}
 
-	set := onlyRules(loaded, opts.only)
+	set := runnableRules(loaded, opts.only)
 	logRuleset(opts, loaded, set, spec)
 
 	result := motor.ApplyRulesToRuleSet(&motor.RuleSetExecution{
@@ -261,10 +263,10 @@ func logRuleset(opts options, loaded, selected *rulesets.RuleSet, spec []byte) {
 		rule := loaded.Rules[id]
 
 		switch {
+		case rule.Severity == rules.SeverityOff:
+			log.Debug("rule skipped", "rule", id, "reason", "severity off")
 		case selected.Rules[id] == nil:
 			log.Debug("rule skipped", "rule", id, "reason", "not selected by -only")
-		case rule.Severity == severityNone:
-			log.Debug("rule skipped", "rule", id, "reason", "severity none")
 		case !formatsMatch(rule.Formats, version):
 			log.Debug("rule skipped", "rule", id, "reason", "formats do not match the document",
 				"formats", rule.Formats, "openapi", version)
@@ -302,13 +304,10 @@ func formatsMatch(formats []string, version string) bool {
 	})
 }
 
-// onlyRules returns set restricted to the comma separated rule ids in only, or
-// set itself when only is empty.
-func onlyRules(set *rulesets.RuleSet, only string) *rulesets.RuleSet {
-	if only == "" {
-		return set
-	}
-
+// runnableRules returns set without the rules that are switched off with
+// severity off and, when only is not empty, restricted to the comma separated
+// rule ids in only.
+func runnableRules(set *rulesets.RuleSet, only string) *rulesets.RuleSet {
 	ids := strings.Split(only, ",")
 
 	return &rulesets.RuleSet{
@@ -320,7 +319,11 @@ func onlyRules(set *rulesets.RuleSet, only string) *rulesets.RuleSet {
 		RuleDefinitions:  set.RuleDefinitions,
 		Rules: maps.Collect(func(yield func(string, *model.Rule) bool) {
 			for id, rule := range set.Rules {
-				if slices.Contains(ids, id) && !yield(id, rule) {
+				if rule.Severity == rules.SeverityOff || only != "" && !slices.Contains(ids, id) {
+					continue
+				}
+
+				if !yield(id, rule) {
 					return
 				}
 			}
@@ -408,7 +411,7 @@ func rank(severity string) int {
 }
 
 func reaches(findings []Finding, failOn string) bool {
-	if failOn == severityNone {
+	if failOn == failNever {
 		return false
 	}
 
