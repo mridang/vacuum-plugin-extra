@@ -8,6 +8,7 @@ import (
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/formats"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -16,6 +17,7 @@ const (
 	stringLengthAndPatternRequiredPatternOption = "requirePattern"
 	stringLengthAndPatternRequiredMinOption     = "requireMinLength"
 	stringLengthAndPatternRequiredMaxOption     = "requireMaxLength"
+	stringLengthAndPatternRequiredFormats       = "shapedFormats"
 	stringLengthAndPatternRequiredString        = "string"
 	stringLengthAndPatternRequiredEnum          = "enum"
 	stringLengthAndPatternRequiredDate          = "date"
@@ -48,9 +50,12 @@ const (
 // composition bypasses every check, because the values are already bounded; the
 // const keyword is an addition to IBM's rule, which predates OpenAPI 3.1):
 //
-//   - pattern is required unless format is binary, byte, date, date-time or url;
-//   - minLength is required unless format is date, identifier or url;
-//   - maxLength is required unless format is date;
+//   - pattern is required unless format is binary, byte, date, date-time or url,
+//     or one of the shapedFormats;
+//   - minLength is required unless format is date, identifier or url, or one of
+//     the shapedFormats;
+//   - maxLength is required unless format is date (the shapedFormats do not
+//     exempt it, since formats such as uri and email are unbounded);
 //   - minLength must not be greater than maxLength.
 //
 // For a schema that declares a type other than string, a declared pattern,
@@ -64,10 +69,19 @@ const (
 // # Options
 //
 //   - requirePattern: require pattern. Default: true.
+//
 //   - requireMinLength: require minLength. Default: true.
+//
 //   - requireMaxLength: require maxLength. Default: true.
 //
-// The options switch off the "missing" findings only; the not-a-string and
+//   - shapedFormats (list of strings): the formats whose values are never empty
+//     and already shaped, which satisfy the pattern and minLength demands.
+//     Default: date, date-time, time, duration, uuid, uri, uri-reference, iri,
+//     url, email, idn-email, hostname, idn-hostname, ipv4, ipv6, json-pointer,
+//     regex, byte. Set it to an empty list to require both on every string.
+//
+// The requirePattern, requireMinLength and requireMaxLength options switch off
+// the "missing" findings only; the not-a-string and
 // minLength-greater-than-maxLength checks always run.
 //
 // # Bad
@@ -128,6 +142,11 @@ func StringLengthAndPatternRequired() Rule {
 				Description: "Require the maxLength keyword.",
 				Default:     true,
 			},
+			{
+				Name:        stringLengthAndPatternRequiredFormats,
+				Description: "Formats that satisfy the pattern and minLength demands because their values are never empty.",
+				Default:     formats.NonEmpty(),
+			},
 		},
 		Check: OnDocument(checkStringLengthAndPatternRequired),
 	})
@@ -135,18 +154,24 @@ func StringLengthAndPatternRequired() Rule {
 
 // stringLengthAndPatternRequiredBypass returns the formats that exempt a
 // string schema from requiring the given keyword.
-func stringLengthAndPatternRequiredBypass(keyword string) []string {
+func stringLengthAndPatternRequiredBypass(call *Call, keyword string) []string {
 	switch keyword {
 	case literalPattern:
-		return []string{
-			"binary",
-			"byte",
-			stringLengthAndPatternRequiredDate,
-			formatDateTime,
-			stringLengthAndPatternRequiredURL,
-		}
+		return slices.Concat(
+			[]string{
+				"binary",
+				"byte",
+				stringLengthAndPatternRequiredDate,
+				formatDateTime,
+				stringLengthAndPatternRequiredURL,
+			},
+			call.Strings(stringLengthAndPatternRequiredFormats),
+		)
 	case keywordMinLength:
-		return []string{stringLengthAndPatternRequiredDate, "identifier", stringLengthAndPatternRequiredURL}
+		return slices.Concat(
+			[]string{stringLengthAndPatternRequiredDate, "identifier", stringLengthAndPatternRequiredURL},
+			call.Strings(stringLengthAndPatternRequiredFormats),
+		)
 	default:
 		return []string{stringLengthAndPatternRequiredDate}
 	}
@@ -460,7 +485,7 @@ func stringLengthAndPatternRequiredStringChecks(call *Call, schema *yaml.Node, p
 		func(keyword string) []Finding {
 			return When(
 				stringLengthAndPatternRequiredEnabled(call, keyword) &&
-					!slices.Contains(stringLengthAndPatternRequiredBypass(keyword), format) &&
+					!slices.Contains(stringLengthAndPatternRequiredBypass(call, keyword), format) &&
 					stringLengthAndPatternRequiredAttribute(call.Root, schema, keyword) == nil,
 				func() Finding {
 					return Finding{
