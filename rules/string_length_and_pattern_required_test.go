@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/formats"
 	"github.com/mridang/vacuum-plugin-extra/internal/ruletest"
 	"github.com/mridang/vacuum-plugin-extra/rules"
 )
@@ -63,14 +64,8 @@ components:
       maxLength: 4
 `), nil)
 
-		require.Equal(t, []string{
-			"$.components.schemas.DateTime",
-			"$.components.schemas.DateTime",
-		}, ruletest.Paths(results))
-		require.ElementsMatch(t, []string{
-			"String schemas should define property 'minLength'",
-			"String schemas should define property 'maxLength'",
-		}, ruletest.Messages(results))
+		require.Equal(t, []string{"$.components.schemas.DateTime"}, ruletest.Paths(results))
+		require.Equal(t, []string{"String schemas should define property 'maxLength'"}, ruletest.Messages(results))
 	})
 
 	t.Run("bypasses everything for enums, also through allOf", func(t *testing.T) {
@@ -174,5 +169,58 @@ components:
 
 		ruletest.RequirePaths(t, rule, doc, nil, "$.components.schemas.Text")
 		ruletest.RequireClean(t, rule, doc, ruletest.Options{"requirePattern": false})
+	})
+
+	t.Run("skips pattern and minLength for every shared format but keeps maxLength", func(t *testing.T) {
+		t.Parallel()
+
+		for _, format := range formats.NonEmpty() {
+			t.Run(format, func(t *testing.T) {
+				t.Parallel()
+
+				results := ruletest.Run(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        value:
+          type: string
+          format: `+format+`
+`), nil)
+				without := ruletest.Run(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        value:
+          type: string
+`), nil)
+
+				require.Len(t, without, 3)
+				require.NotContains(t, ruletest.Messages(results), "String schemas should define property 'pattern'")
+				require.NotContains(t, ruletest.Messages(results), "String schemas should define property 'minLength'")
+			})
+		}
+	})
+
+	t.Run("honours the shapedFormats option", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc31(`
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        value:
+          type: string
+          format: email
+          maxLength: 64
+`)
+
+		ruletest.RequireClean(t, rule, document, nil)
+		require.Len(t, ruletest.Run(t, rule, document, ruletest.Options{"shapedFormats": []any{}}), 2)
 	})
 }
