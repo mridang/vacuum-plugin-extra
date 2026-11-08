@@ -19,6 +19,10 @@ import (
 // clash with the rules that vacuum ships.
 const IDPrefix = "extra-"
 
+// SeverityOff is the severity that switches a rule off. vacuum's ruleset schema
+// accepts it next to error, warn, info and hint.
+const SeverityOff = "off"
+
 // categoryName is the category that every function of this package reports.
 const categoryName = "extra"
 
@@ -116,6 +120,13 @@ func (r Rule) GetCategory() string {
 // given JSONPath to the check and converts the findings into vacuum results.
 func (r Rule) RunRule(nodes []*yaml.Node, ctx model.RuleFunctionContext) []model.RuleFunctionResult {
 	log := slog.Default().With("rule", r.ID())
+
+	if ctx.Rule != nil && ctx.Rule.Severity == SeverityOff {
+		log.Debug("rule skipped", "reason", "severity off")
+
+		return nil
+	}
+
 	enabled := log.Enabled(context.Background(), slog.LevelDebug)
 
 	if enabled {

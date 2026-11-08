@@ -28,7 +28,7 @@ vacuum-extra -debug openapi.yaml
 
 The command exits with 0 when nothing at or above the `-fail-on` severity (default `error`; use `none` to never fail) is found, 1 when something is, and 2 for invalid usage. `-r` replaces the embedded ruleset with your own, which can configure any rule's severity and options.
 
-`-debug` (or `VACUUM_EXTRA_DEBUG=1`) writes a `log/slog` trace to stderr: the ruleset that was loaded, every rule that is skipped and why (not selected by `-only`, `severity: none`, or formats that do not match the document), and for each rule that runs its id, `given` path, options, the number of nodes it visited and the number of findings. Nothing is logged and the output does not change without it.
+`-debug` (or `VACUUM_EXTRA_DEBUG=1`) writes a `log/slog` trace to stderr: the ruleset that was loaded, every rule that is skipped and why (not selected by `-only`, `severity: off`, or formats that do not match the document), and for each rule that runs its id, `given` path, options, the number of nodes it visited and the number of findings. Nothing is logged and the output does not change without it.
 
 ```text
 level=DEBUG msg="ruleset loaded" source=embedded rules=165 selected=2 openapi=3.0.3
@@ -39,7 +39,33 @@ level=DEBUG msg=done rule=extra-summary-no-trailing-period findings=1
 
 The rules read `$ref` nodes as written, so every rule of the embedded ruleset sets `resolved: false`, and the command forces it for `extra-` rules of a ruleset passed with `-r`. A document that splits itself over several files with relative `$ref`s is bundled first (file references are pulled in, references to components stay references), so the rules see the whole API; line numbers in the findings then refer to the bundled text, not to the files on disk. Remote `http(s)` references are not fetched.
 
-`ruleset.yaml` in the repository root is the embedded ruleset. It lists every rule with its severity, `given` JSONPath, how-to-fix message and default options. A rule can be switched off with `severity: none`. Rules that need configuration to do anything, such as `extra-banned-words-in-docs`, are inert until their options are filled in. `ruleset.yaml` is generated with `make generate`; do not edit it by hand.
+`ruleset.yaml` in the repository root is the embedded ruleset. It lists every rule with its severity, `given` JSONPath, how-to-fix message and default options. A rule can be switched off with `severity: off`. Rules that need configuration to do anything, such as `extra-banned-words-in-docs`, are inert until their options are filled in. `ruleset.yaml` is generated with `make generate`; do not edit it by hand.
+
+### Switching rules off and changing severities
+
+A custom ruleset passed with `-r` lists only the rules it names; a rule that is not in it does not run. Copy the complete entries you want from `ruleset.yaml` (vacuum rejects an entry without `given` and `then`) and change their `severity`, which can be `error`, `warn`, `info`, `hint` or `off` (the values of vacuum's ruleset schema; anything else, including `none`, is rejected). A rule set to `off` is skipped: it does not run, reports nothing and, with `-debug`, logs one `rule skipped` line. This works for every rule, also when its `functionOptions` are not valid. The severity of the other rules is the one reported in the findings and is what `-fail-on` compares against; `-fail-on none` is the only place `none` is accepted, and it means the run never fails.
+
+```yaml
+rules:
+  extra-summary-no-trailing-period:
+    description: Operation summaries must not end with a period.
+    message: "{{error}}"
+    given: $
+    resolved: false
+    severity: off
+    type: style
+    then:
+      function: extra-summary-no-trailing-period
+  extra-no-eval-in-title:
+    description: Titles and descriptions must not contain eval(.
+    message: "{{error}}"
+    given: $
+    resolved: false
+    severity: info
+    type: validation
+    then:
+      function: extra-no-eval-in-title
+```
 
 ### As a Go library
 
