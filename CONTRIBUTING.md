@@ -48,6 +48,14 @@ Every rule is one file, one test file and one entry in the catalogue.
 6. Run `make generate` to regenerate `ruleset.yaml`, and add a row to the table
    in the README.
 
+A rule that checks a naming convention must not invent its own option. Declare
+the shared one with `casingOption(subject, defaults...)`, build the check with
+`WithCasing`, and compare names through the `casing.Set` it receives (see
+`internal/casing`). That gives every casing rule the same `casing` option, the
+same values, the same validation error and a message that names the convention.
+Add the rule to the table in `rules/casing_test.go` so that every casing value
+is proven against it.
+
 Use the helpers in `internal/oas` to read the document instead of walking YAML
 nodes by hand. Keep functions small, brace every `if` over multiple lines, and
 avoid package-level variables.

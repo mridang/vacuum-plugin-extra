@@ -231,9 +231,9 @@ rules:
       functionOptions:
         maxLength: 50
   extra-component-schema-name-case:
-    description: Component schema names must be upper camel case.
+    description: Component schema names must follow the configured case convention.
     message: "{{error}}"
-    howToFix: Rename the schema to its PascalCase form and update every $ref to it.
+    howToFix: Rename the schema to the configured case convention and update every $ref to it.
     given: $
     resolved: false
     severity: warn
@@ -241,7 +241,9 @@ rules:
     then:
       function: extra-component-schema-name-case
       functionOptions:
-        style: pascal
+        casing:
+          - PascalCase
+        ignore: []
   extra-composition-branches-same-type:
     description: All leaf schemas of a oneOf, allOf, anyOf or not must have the same type.
     message: "{{error}}"
@@ -443,9 +445,9 @@ rules:
       function: extra-encoding-keys-match-properties
       functionOptions: {}
   extra-enum-value-case:
-    description: String enum values must be snake_case or SCREAMING_SNAKE_CASE.
+    description: String enum values must follow the configured case convention, snake_case or SCREAMING_SNAKE_CASE by default.
     message: "{{error}}"
-    howToFix: Rename the enum value to snake_case or SCREAMING_SNAKE_CASE.
+    howToFix: Rename the enum value to the configured case convention.
     given: $
     resolved: false
     severity: warn
@@ -453,8 +455,9 @@ rules:
     then:
       function: extra-enum-value-case
       functionOptions:
-        allowScreamingSnake: true
-        allowSnake: true
+        casing:
+          - snake_case
+          - SCREAMING_SNAKE_CASE
   extra-error-container-schema-shape:
     description: Error response schemas must follow the API Handbook error container model.
     message: "{{error}}"
@@ -511,7 +514,9 @@ rules:
     then:
       function: extra-example-body-key-case
       functionOptions:
-        style: snake-case
+        casing:
+          - snake_case
+        ignoreKeys: []
   extra-example-value-xor-external:
     description: An Example Object must define exactly one of value and externalValue.
     message: "{{error}}"
@@ -1043,8 +1048,9 @@ rules:
     then:
       function: extra-operation-id-casing
       functionOptions:
+        casing:
+          - snake_case
         strictCharset: false
-        style: snake
   extra-operation-id-max-length:
     description: The operationId must not be longer than the configured limit.
     message: "{{error}}"
@@ -1320,7 +1326,8 @@ rules:
     then:
       function: extra-path-parameter-case
       functionOptions:
-        style: snake
+        casing:
+          - snake_case
   extra-path-segment-case:
     description: Paths must start with a slash, have no trailing slash or empty segments and use one casing.
     message: "{{error}}"
@@ -1332,7 +1339,8 @@ rules:
     then:
       function: extra-path-segment-case
       functionOptions:
-        case: kebab
+        casing:
+          - kebab-case
   extra-path-segment-param-only:
     description: A path segment with a parameter must contain only that parameter.
     message: "{{error}}"

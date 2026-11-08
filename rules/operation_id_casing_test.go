@@ -47,14 +47,14 @@ func TestOperationIDCasing(t *testing.T) {
 			"$.paths['/pets'].post.operationId",
 			"$.paths['/pets'].put.operationId",
 		}, ruletest.Paths(results))
-		require.Contains(t, ruletest.Messages(results)[0], "snake")
+		require.Contains(t, ruletest.Messages(results)[0], "snake_case")
 	})
 
 	t.Run("accepts identifiers in the configured style", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc30(operationIDCasingDocument),
-			ruletest.Options{"style": "camel"},
+			ruletest.Options{"casing": "camelCase"},
 			"$.paths['/pets'].get.operationId",
 			"$.paths['/pets'].put.operationId",
 		)
@@ -76,7 +76,7 @@ paths:
       responses:
         "201":
           description: ok
-`), ruletest.Options{"style": "", "strictCharset": true})
+`), ruletest.Options{"casing": []string{}, "strictCharset": true})
 
 		require.ElementsMatch(t, []string{
 			"$.paths['/pets'].get.operationId",

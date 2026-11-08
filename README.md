@@ -93,6 +93,33 @@ go build -buildmode=plugin -o plugins/extra.so ./plugin
 vacuum lint -r ruleset.yaml -f ./plugins openapi.yaml
 ```
 
+## Casing rules
+
+Every rule that checks a naming convention takes the same `casing` option: `extra-component-schema-name-case`, `extra-operation-id-casing`, `extra-path-segment-case`, `extra-path-parameter-case`, `extra-example-body-key-case` and `extra-enum-value-case`. The value is one of `kebab-case`, `snake_case`, `camelCase`, `PascalCase`, `SCREAMING_SNAKE_CASE`, `SCREAMING-KEBAB-CASE`, `dot.case` or `lowercase`, or a list of them when a name may follow any one (the enum rule defaults to `[snake_case, SCREAMING_SNAKE_CASE]`). An empty list disables the casing check, and an unknown value is reported as a finding that names the allowed values. Every message says which convention the rule expects.
+
+`extra-example-body-key-case` only checks keys of objects whose schema declares properties, and takes `ignoreKeys` (exact keys or glob patterns) for names defined outside the API such as OIDC claims. `extra-component-schema-name-case` also takes `ignore`, a list of regular expressions for names that follow no convention, such as generated error schemas like `auth-csrf_invalid`. A ruleset for an API with camelCase operation ids, snake_case paths and kebab-case schema names:
+
+```yaml
+extends: [[./ruleset.yaml, all]]
+rules:
+  extra-operation-id-casing:
+    then:
+      function: extra-operation-id-casing
+      functionOptions:
+        casing: camelCase
+  extra-path-segment-case:
+    then:
+      function: extra-path-segment-case
+      functionOptions:
+        casing: snake_case
+  extra-component-schema-name-case:
+    then:
+      function: extra-component-schema-name-case
+      functionOptions:
+        casing: kebab-case
+        ignore: ["^auth-.*_"]
+```
+
 ## How the rules were assembled
 
 The source list had 192 rows. Several rows describe the same check, so they were merged into one rule, giving 165 distinct rules:
@@ -141,7 +168,7 @@ Some rules are a conservative subset of the check in the linter they come from, 
 | `extra-boolean-parameter-prefix`                    | warn     | Boolean parameter names must start with one of the configured prefixes.                                                        | Redocly                            | `prefixes`                                                                          |
 | `extra-collection-response-has-named-array`         | warn     | List operation responses must contain an array property named after the last path segment.                                     | IBM                                | `operationIdPrefix`                                                                 |
 | `extra-component-name-max-length`                   | info     | Component names must not be longer than a maximum length.                                                                      | RMOA                               | `maxLength`                                                                         |
-| `extra-component-schema-name-case`                  | warn     | Component schema names must be upper camel case.                                                                               | IBM, Oxide                         | `style`                                                                             |
+| `extra-component-schema-name-case`                  | warn     | Component schema names must follow the configured case convention.                                                             | IBM, Oxide                         | `casing`, `ignore`                                                                  |
 | `extra-composition-branches-same-type`              | warn     | All leaf schemas of a oneOf, allOf, anyOf or not must have the same type.                                                      | Oxide                              | -                                                                                   |
 | `extra-consistent-property-name-and-type`           | warn     | Properties with the same name in different schemas must have the same type.                                                    | IBM                                | `ignore`                                                                            |
 | `extra-content-must-have-schema`                    | error    | Every content entry of a request body, response or parameter must contain a schema.                                            | IBM                                | -                                                                                   |
@@ -158,12 +185,12 @@ Some rules are a conservative subset of the check in the linter they come from, 
 | `extra-document-has-operations`                     | warn     | The document must define at least one operation.                                                                               | oas-kit                            | -                                                                                   |
 | `extra-empty-required-or-enum`                      | error    | The required and enum lists of a schema must be non-empty and free of duplicates.                                              | KaiZen                             | -                                                                                   |
 | `extra-encoding-keys-match-properties`              | error    | Encoding map keys must name properties of the media type schema.                                                               | KaiZen                             | -                                                                                   |
-| `extra-enum-value-case`                             | warn     | String enum values must be snake_case or SCREAMING_SNAKE_CASE.                                                                 | Oxide                              | `allowSnake`, `allowScreamingSnake`                                                 |
+| `extra-enum-value-case`                             | warn     | String enum values must follow the configured case convention, snake_case or SCREAMING_SNAKE_CASE by default.                  | Oxide                              | `casing`                                                                            |
 | `extra-error-container-schema-shape`                | warn     | Error response schemas must follow the API Handbook error container model.                                                     | IBM                                | -                                                                                   |
 | `extra-error-response-content-type`                 | warn     | Error responses that define content must offer an application/json entry.                                                      | IBM                                | -                                                                                   |
 | `extra-error-response-has-body`                     | warn     | 4xx responses must declare a response body with a schema.                                                                      | apilint                            | `requireSchema`                                                                     |
 | `extra-etag-with-conditional-headers`               | warn     | A path item with If-Match or If-None-Match parameters must return an ETag header from GET.                                     | IBM                                | -                                                                                   |
-| `extra-example-body-key-case`                       | warn     | Property names in example bodies must follow the configured case style.                                                        | apilint                            | `style`                                                                             |
+| `extra-example-body-key-case`                       | warn     | Property names in example bodies must follow the configured case style.                                                        | apilint                            | `casing`, `ignoreKeys`                                                              |
 | `extra-example-value-xor-external`                  | error    | An Example Object must define exactly one of value and externalValue.                                                          | scalar, Spectral, speccy, oas-kit  | `forbidBoth`, `requireOne`                                                          |
 | `extra-exploded-object-query-required-property`     | warn     | A required exploded object query parameter needs at least one required property.                                               | specmatic                          | -                                                                                   |
 | `extra-extensible-enum-string-type`                 | error    | Schemas with x-extensible-enum must have type string.                                                                          | Zally                              | -                                                                                   |
@@ -207,7 +234,7 @@ Some rules are a conservative subset of the check in the linter they come from, 
 | `extra-operation-description-min-chars`             | info     | The longer of an operation's description and summary must reach a minimum length.                                              | ai-api-lint                        | `minLength`                                                                         |
 | `extra-operation-description-opens-with-sentence`   | warn     | Operation descriptions must open with a sentence, not a heading, quote, list, table, code fence or HTML.                       | Redocly                            | -                                                                                   |
 | `extra-operation-description-restates-path`         | warn     | Operation descriptions and summaries must not merely restate the method and path.                                              | ai-api-lint                        | -                                                                                   |
-| `extra-operation-id-casing`                         | warn     | operationId must follow the configured case convention.                                                                        | IBM, Oxide, ai-api-lint            | `style`, `strictCharset`                                                            |
+| `extra-operation-id-casing`                         | warn     | operationId must follow the configured case convention.                                                                        | IBM, Oxide, ai-api-lint            | `casing`, `strictCharset`                                                           |
 | `extra-operation-id-max-length`                     | warn     | The operationId must not be longer than the configured limit.                                                                  | ai-api-lint, RMOA                  | `maxLength`                                                                         |
 | `extra-operation-id-max-prefixes`                   | info     | The document must not use more than a few distinct operationId verb prefixes.                                                  | ai-api-lint                        | `max`                                                                               |
 | `extra-operation-id-reserved-word`                  | warn     | The operationId must not be a reserved word of the target language.                                                            | ai-api-lint                        | `words`                                                                             |
@@ -225,8 +252,8 @@ Some rules are a conservative subset of the check in the linter they come from, 
 | `extra-path-http-verbs-order`                       | info     | Operations within a path item must follow the configured HTTP method order.                                                    | Redocly                            | `order`                                                                             |
 | `extra-path-item-summary-or-description`            | info     | Each path item must have a summary or a description.                                                                           | oas-kit                            | -                                                                                   |
 | `extra-path-param-placement`                        | warn     | Paths must not start with a path parameter, and path parameters must fill a whole segment.                                     | Zally                              | -                                                                                   |
-| `extra-path-parameter-case`                         | warn     | Path template variables must use the configured case style.                                                                    | apilint, Oxide                     | `style`                                                                             |
-| `extra-path-segment-case`                           | warn     | Paths must start with a slash, have no trailing slash or empty segments and use one casing.                                    | openapilint, apilint               | `case`                                                                              |
+| `extra-path-parameter-case`                         | warn     | Path template variables must use the configured case style.                                                                    | apilint, Oxide                     | `casing`                                                                            |
+| `extra-path-segment-case`                           | warn     | Paths must start with a slash, have no trailing slash or empty segments and use one casing.                                    | openapilint, apilint               | `casing`                                                                            |
 | `extra-path-segment-param-only`                     | warn     | A path segment with a parameter must contain only that parameter.                                                              | IBM                                | -                                                                                   |
 | `extra-path-segment-plural`                         | warn     | Literal path segments must be plural nouns.                                                                                    | Redocly, apilint                   | `ignoreLastPathSegment`, `exceptions`, `onlyCollectionSegments`                     |
 | `extra-pattern-anchored`                            | warn     | String schema patterns must be anchored with ^ and $.                                                                          | IBM                                | `requireStart`, `requireEnd`                                                        |

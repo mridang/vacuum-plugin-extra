@@ -67,7 +67,7 @@ paths:
 `), nil)
 	})
 
-	t.Run("honours the case option", func(t *testing.T) {
+	t.Run("honours the casing option", func(t *testing.T) {
 		t.Parallel()
 
 		document := ruletest.Doc31(`
@@ -79,8 +79,8 @@ paths:
           description: ok
 `)
 
-		ruletest.RequireClean(t, rule, document, ruletest.Options{"case": "snake"})
+		ruletest.RequireClean(t, rule, document, ruletest.Options{"casing": "snake_case"})
 		ruletest.RequirePaths(t, rule, document, nil, "$.paths['/pet_owners']")
-		ruletest.RequirePaths(t, rule, document, ruletest.Options{"case": "pascal"}, "$.paths['/pet_owners']")
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "PascalCase"}, "$.paths['/pet_owners']")
 	})
 }

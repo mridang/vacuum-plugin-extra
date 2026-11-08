@@ -54,8 +54,6 @@ const (
 	literalUUID              = "uuid"
 	literalPattern           = "pattern"
 	literalProperties        = "properties"
-	literalSnake             = "snake"
-	literalPascal            = "pascal"
 	literalPatch             = "patch"
 	literalObject            = "object"
 )
