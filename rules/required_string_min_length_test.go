@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/formats"
 	"github.com/mridang/vacuum-plugin-extra/internal/ruletest"
 	"github.com/mridang/vacuum-plugin-extra/rules"
 )
@@ -77,5 +78,66 @@ components:
         name:
           type: [string, "null"]
 `), nil, "$.components.schemas.Pet.properties.name")
+	})
+
+	t.Run("accepts every shared format and still flags the string without it", func(t *testing.T) {
+		t.Parallel()
+
+		for _, format := range formats.NonEmpty() {
+			t.Run(format, func(t *testing.T) {
+				t.Parallel()
+
+				ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          format: `+format+`
+`), nil)
+				ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+`), nil, "$.components.schemas.Pet.properties.name")
+			})
+		}
+	})
+
+	t.Run("flags formats that are not in the shapedFormats option", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name, stamp]
+      properties:
+        name:
+          type: string
+          format: uri
+        stamp:
+          type: string
+          format: date-time
+`)
+
+		ruletest.RequirePaths(
+			t, rule, document, ruletest.Options{"shapedFormats": []any{"date-time"}},
+			"$.components.schemas.Pet.properties.name",
+		)
+		ruletest.RequirePaths(
+			t, rule, document, ruletest.Options{"shapedFormats": []any{}},
+			"$.components.schemas.Pet.properties.name",
+			"$.components.schemas.Pet.properties.stamp",
+		)
 	})
 }
