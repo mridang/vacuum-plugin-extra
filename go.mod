@@ -3,8 +3,9 @@ module github.com/mridang/vacuum-plugin-extra
 go 1.27.1
 
 require (
-	github.com/daveshanley/vacuum v0.39.0
+	github.com/daveshanley/vacuum v0.39.3
 	github.com/pb33f/go-yaml v0.1.1
+	github.com/pb33f/libopenapi v0.42.3
 	github.com/stretchr/testify v1.12.1
 )
 
@@ -48,7 +49,6 @@ require (
 	github.com/pb33f/jsonpath v0.8.5 // indirect
 	github.com/pb33f/jsonschema/v6 v6.0.3 // indirect
 	github.com/pb33f/libasyncapi v0.0.7 // indirect
-	github.com/pb33f/libopenapi v0.42.3 // indirect
 	github.com/pb33f/libopenapi-validator v0.16.2 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
