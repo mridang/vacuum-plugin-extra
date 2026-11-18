@@ -48,13 +48,14 @@ var ErrUsage = errors.New("usage")
 
 // options are the parsed command line options.
 type options struct {
-	ruleset string
-	format  string
-	failOn  string
-	only    string
-	list    bool
-	spec    string
-	debug   bool
+	ruleset    string
+	format     string
+	failOn     string
+	only       string
+	list       bool
+	spec       string
+	debug      bool
+	ignoreFile string
 }
 
 // debugEnv is the environment variable that switches debug logging on, as an
@@ -95,12 +96,21 @@ func Run(args []string, stdout, stderr io.Writer) int {
 		defer slog.SetDefault(previous)
 	}
 
+	ignores, err := loadIgnoreFile(opts.ignoreFile)
+	if err != nil {
+		fmt.Fprintln(stderr, "vacuum-extra:", err)
+
+		return ExitUsage
+	}
+
 	findings, err := lint(opts)
 	if err != nil {
 		fmt.Fprintln(stderr, "vacuum-extra:", err)
 
 		return ExitUsage
 	}
+
+	findings = suppressFindings(findings, ignores)
 
 	if err = render(stdout, opts.format, findings); err != nil {
 		fmt.Fprintln(stderr, "vacuum-extra:", err)
@@ -133,19 +143,25 @@ func parse(args []string, stderr io.Writer) (options, error) {
 		debugFromEnv(),
 		"log rules, options, visited nodes and findings to stderr ("+debugEnv+")",
 	)
+	ignorePath := set.String(
+		"ignore-file",
+		"",
+		"YAML map from rule id to the exact JSONPaths whose findings are suppressed",
+	)
 
 	if err := set.Parse(args); err != nil {
 		return options{}, fmt.Errorf("parse flags: %w", err)
 	}
 
 	opts := options{
-		ruleset: *ruleset,
-		format:  *format,
-		failOn:  *failOn,
-		only:    *only,
-		list:    *list,
-		spec:    set.Arg(0),
-		debug:   *debug,
+		ruleset:    *ruleset,
+		format:     *format,
+		failOn:     *failOn,
+		only:       *only,
+		list:       *list,
+		spec:       set.Arg(0),
+		debug:      *debug,
+		ignoreFile: *ignorePath,
 	}
 
 	if opts.list {
@@ -423,4 +439,75 @@ func reaches(findings []Finding, failOn string) bool {
 	}
 
 	return false
+}
+
+// ignoreRules maps a rule id to the JSONPaths whose findings the rule must not
+// report. The layout is the same as vacuum's --ignore-file.
+type ignoreRules map[string][]string
+
+// ignoreEntry is one rule id and path pair of an ignore file.
+type ignoreEntry struct {
+	rule string
+	path string
+}
+
+// loadIgnoreFile reads the file given with -ignore-file. An empty path means no
+// file, and yields no entries.
+func loadIgnoreFile(path string) (ignoreRules, error) {
+	if path == "" {
+		return ignoreRules{}, nil
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read ignore file: %w", err)
+	}
+
+	var file ignoreRules
+	if err = yaml.Unmarshal(data, &file); err != nil {
+		return nil, fmt.Errorf("parse ignore file %s: %w", path, err)
+	}
+
+	return file, nil
+}
+
+// suppressFindings drops the findings whose rule id is a key of file and whose
+// path is exactly one of its entries. Suppressed findings are not returned, so
+// they neither reach the output nor count toward -fail-on. At debug level it
+// logs how many findings each rule lost and each entry that matched nothing.
+func suppressFindings(findings []Finding, file ignoreRules) []Finding {
+	if len(file) == 0 {
+		return findings
+	}
+
+	kept := make([]Finding, 0, len(findings))
+	dropped := map[string]int{}
+	matched := map[ignoreEntry]bool{}
+
+	for _, finding := range findings {
+		if slices.Contains(file[finding.Rule], finding.Path) {
+			dropped[finding.Rule]++
+			matched[ignoreEntry{rule: finding.Rule, path: finding.Path}] = true
+
+			continue
+		}
+
+		kept = append(kept, finding)
+	}
+
+	log := slog.Default()
+
+	for _, rule := range slices.Sorted(maps.Keys(dropped)) {
+		log.Debug("suppressed", "rule", rule, "findings", dropped[rule])
+	}
+
+	for _, rule := range slices.Sorted(maps.Keys(file)) {
+		for _, path := range file[rule] {
+			if !matched[ignoreEntry{rule: rule, path: path}] {
+				log.Debug("ignore entry matched nothing", "rule", rule, "path", path)
+			}
+		}
+	}
+
+	return kept
 }

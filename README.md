@@ -22,11 +22,23 @@ vacuum-extra openapi.yaml
 vacuum-extra -format json -fail-on warn openapi.yaml
 vacuum-extra -only extra-unique-tag-names,extra-operation-id-casing openapi.yaml
 vacuum-extra -r my-ruleset.yaml openapi.yaml
+vacuum-extra -ignore-file ignore.yaml openapi.yaml
 vacuum-extra -list
 vacuum-extra -debug openapi.yaml
 ```
 
 The command exits with 0 when nothing at or above the `-fail-on` severity (default `error`; use `none` to never fail) is found, 1 when something is, and 2 for invalid usage. `-r` replaces the embedded ruleset with your own, which can configure any rule's severity and options.
+
+`-ignore-file` suppresses findings at known locations, for example an operation id that keeps a legacy verb prefix, without switching the rule off for the rest of the API. The file is a YAML map from a rule id to a list of JSONPath strings, the same layout as vacuum's `--ignore-file`:
+
+```yaml
+extra-operation-id-verb-prefix:
+  - $.paths['/projects/{project_id}/claim/init'].post.operationId
+extra-well-defined-dictionaries:
+  - $.components.schemas['user-schema']
+```
+
+A finding is dropped only when its rule id is a key of the file and its `path` (the string `-format json` reports) is exactly one of the listed strings. YAML comments are allowed and a rule id that the ruleset does not contain is ignored. Suppressed findings neither appear in the output nor count toward `-fail-on`. A missing or unparsable file exits with 2. With `-debug`, the command logs how many findings were suppressed per rule and each entry that matched nothing, which finds stale entries.
 
 `-debug` (or `VACUUM_EXTRA_DEBUG=1`) writes a `log/slog` trace to stderr: the ruleset that was loaded, every rule that is skipped and why (not selected by `-only`, `severity: off`, or formats that do not match the document), and for each rule that runs its id, `given` path, options, the number of nodes it visited and the number of findings. Nothing is logged and the output does not change without it.
 
