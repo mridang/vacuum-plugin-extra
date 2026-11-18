@@ -38,7 +38,7 @@ paths:
 		require.Contains(t, results[0].Message, "required")
 	})
 
-	t.Run("flags an empty required list and follows refs", func(t *testing.T) {
+	t.Run("flags a schema without a required key that is reached through a ref", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
@@ -57,10 +57,55 @@ components:
   schemas:
     NewPet:
       type: object
-      required: []
       properties:
         name: {type: string}
 `), nil, "$.paths['/pets'].post.requestBody.content['application/json'].schema")
+	})
+
+	t.Run("accepts an explicit empty required list", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: []
+              properties:
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+`), nil)
+	})
+
+	t.Run("accepts an explicit empty required list reached through a ref", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPet"
+      responses:
+        "201":
+          description: created
+components:
+  schemas:
+    NewPet:
+      type: object
+      required: []
+      properties:
+        name: {type: string}
+`), nil)
 	})
 
 	t.Run("accepts a required list and schemas without properties", func(t *testing.T) {

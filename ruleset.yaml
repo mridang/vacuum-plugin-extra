@@ -1525,7 +1525,7 @@ rules:
       functionOptions:
         mediaType: application/json
   extra-request-body-required-list:
-    description: A JSON request body schema with properties must list its required properties.
+    description: A JSON request body schema with properties must state its required properties, an empty list included.
     message: "{{error}}"
     howToFix: Add a required list with the mandatory properties to the request body schema.
     given: $

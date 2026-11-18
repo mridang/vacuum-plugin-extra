@@ -18,10 +18,12 @@ const requestBodyRequiredListJSON = "application/json"
 //
 // # What it checks
 //
-// For every operation, the schema of the JSON request body must list its
-// mandatory properties. A schema that declares properties but has no required
-// list, or an empty one, is reported. The schema is read from the media types
-// named by the mediaTypes option, and a $ref schema is followed to its target.
+// For every operation, the schema of the JSON request body must state which of
+// its properties are mandatory. A schema that declares properties but has no
+// required key is reported. An explicit empty required list (required: []) is
+// accepted, because it states that every property is optional. The schema is
+// read from the media types named by the mediaTypes option, and a $ref schema
+// is followed to its target.
 //
 // # Why
 //
@@ -68,12 +70,13 @@ const requestBodyRequiredListJSON = "application/json"
 // # Known false positives / limitations
 //
 // Request bodies in which every property is genuinely optional, such as PATCH
-// payloads, are reported. Only the top-level schema is examined; properties
-// introduced through allOf are not counted.
+// payloads, are reported unless the schema declares required: [] explicitly.
+// Only the top-level schema is examined; properties introduced through allOf
+// are not counted.
 func RequestBodyRequiredList() Rule {
 	return New(Spec{
 		Name:        "request-body-required-list",
-		Description: "A JSON request body schema with properties must list its required properties.",
+		Description: "A JSON request body schema with properties must state its required properties, an empty list included.",
 		HowToFix:    "Add a required list with the mandatory properties to the request body schema.",
 		Severity:    model.SeverityInfo,
 		Given:       "$",
@@ -99,7 +102,7 @@ func checkRequestBodyRequiredList(call *Call, operation oas.Operation) []Finding
 
 		return When(
 			slices.Contains(wanted, strings.ToLower(name.Value)) &&
-				!oas.Empty(oas.Get(schema, "properties")) && oas.Empty(oas.Get(schema, "required")),
+				!oas.Empty(oas.Get(schema, "properties")) && !oas.Has(schema, "required"),
 			func() Finding {
 				return Finding{
 					Node:    oas.Get(media, "schema"),
