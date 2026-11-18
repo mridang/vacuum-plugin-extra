@@ -10,7 +10,10 @@ import (
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
 
-const arrayBoundsAndItemsConsistencyRequireBounds = "requireBounds"
+const (
+	arrayBoundsAndItemsConsistencyRequireBounds   = "requireBounds"
+	arrayBoundsAndItemsConsistencyRequireMinItems = "requireMinItems"
+)
 
 // ArrayBoundsAndItemsConsistency returns the extra-array-bounds-and-items-consistency rule.
 //
@@ -38,6 +41,12 @@ const arrayBoundsAndItemsConsistencyRequireBounds = "requireBounds"
 //   - requireBounds (bool, default true): also require numeric minItems and
 //     maxItems. With false only items and the minItems/maxItems ordering are
 //     checked.
+//
+//   - requireMinItems (bool, default true): when requireBounds is true, also
+//     require a numeric minItems. With false a missing minItems is not reported
+//     while maxItems and items are still checked, which suits arrays bounded
+//     only from above. The minItems/maxItems ordering check still runs when both
+//     are present.
 //
 // # Bad
 //
@@ -77,6 +86,11 @@ func ArrayBoundsAndItemsConsistency() Rule {
 				Description: "Require numeric minItems and maxItems on every array schema.",
 				Default:     true,
 			},
+			{
+				Name:        arrayBoundsAndItemsConsistencyRequireMinItems,
+				Description: "Require a numeric minItems on every array schema when requireBounds is set.",
+				Default:     true,
+			},
 		},
 		Check: PerSchema(checkArrayBoundsAndItemsConsistency),
 	})
@@ -92,10 +106,14 @@ func checkArrayBoundsAndItemsConsistency(call *Call, schema oas.Schema) []Findin
 	minItems, hasMin := oas.Number(arrayBoundsAndItemsConsistencyLookup(call.Root, schema.Node, "minItems"))
 	maxItems, hasMax := oas.Number(arrayBoundsAndItemsConsistencyLookup(call.Root, schema.Node, "maxItems"))
 	requireBounds := call.Bool(arrayBoundsAndItemsConsistencyRequireBounds)
+	requireMinItems := requireBounds && call.Bool(arrayBoundsAndItemsConsistencyRequireMinItems)
 
 	messages := slices.Concat(
 		arrayBoundsAndItemsConsistencyIf(!oas.IsMap(items), "array schemas must specify an 'items' schema"),
-		arrayBoundsAndItemsConsistencyIf(requireBounds && !hasMin, "array schemas should define a numeric 'minItems'"),
+		arrayBoundsAndItemsConsistencyIf(
+			requireMinItems && !hasMin,
+			"array schemas should define a numeric 'minItems'",
+		),
 		arrayBoundsAndItemsConsistencyIf(requireBounds && !hasMax, "array schemas should define a numeric 'maxItems'"),
 		arrayBoundsAndItemsConsistencyIf(hasMin && hasMax && minItems > maxItems,
 			"'minItems' cannot be greater than 'maxItems'"),

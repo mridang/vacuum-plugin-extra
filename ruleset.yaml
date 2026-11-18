@@ -139,6 +139,7 @@ rules:
       function: extra-array-bounds-and-items-consistency
       functionOptions:
         requireBounds: true
+        requireMinItems: true
   extra-array-parameter-serialization:
     description: Array parameters must declare both style and explode.
     message: "{{error}}"

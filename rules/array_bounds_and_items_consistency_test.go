@@ -124,4 +124,64 @@ components:
             type: string
 `), nil)
 	})
+
+	t.Run("minItems is optional when requireMinItems is false", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+components:
+  schemas:
+    Tags:
+      type: array
+      maxItems: 10
+      items:
+        type: string
+`), ruletest.Options{"requireMinItems": false})
+	})
+
+	t.Run("still requires maxItems when requireMinItems is false", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+components:
+  schemas:
+    Tags:
+      type: array
+      items:
+        type: string
+`), ruletest.Options{"requireMinItems": false}, "$.components.schemas.Tags")
+	})
+
+	t.Run("still rejects minItems above maxItems when requireMinItems is false", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc30(`
+components:
+  schemas:
+    Tags:
+      type: array
+      minItems: 5
+      maxItems: 2
+      items:
+        type: string
+`), ruletest.Options{"requireMinItems": false})
+
+		require.Equal(t, []string{"'minItems' cannot be greater than 'maxItems'"}, ruletest.Messages(results))
+	})
+
+	t.Run(
+		"requireBounds false switches off minItems and maxItems even when requireMinItems is true",
+		func(t *testing.T) {
+			t.Parallel()
+
+			ruletest.RequireClean(t, rule, ruletest.Doc30(`
+components:
+  schemas:
+    Tags:
+      type: array
+      items:
+        type: string
+`), ruletest.Options{"requireBounds": false, "requireMinItems": true})
+		},
+	)
 }
