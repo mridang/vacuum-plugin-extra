@@ -19,17 +19,30 @@ const compositionBranchesSameTypeMaxDepth = 16
 // makes a composition inconsistent.
 const compositionBranchesSameTypeMinDistinct = 2
 
+// compositionBranchesSameTypeIgnoreNull is the option that skips null leaves
+// and drops null from type lists.
+const compositionBranchesSameTypeIgnoreNull = "ignoreNull"
+
+// compositionBranchesSameTypeNull is the JSON Schema type that marks a value as
+// nullable rather than naming a second type.
+const compositionBranchesSameTypeNull = "null"
+
 // CompositionBranchesSameType returns the extra-composition-branches-same-type
 // rule.
 //
 // # What it checks
 //
-// For every schema that uses allOf, anyOf, oneOf or not, all the leaf schemas
+// For every schema that uses allOf, anyOf or oneOf, all the leaf schemas
 // reachable through those keywords must declare the same type. Branches are
 // followed through $ref and through nested compositions, so only the leaves
 // (schemas without a composition keyword of their own) are compared. Leaves
-// that declare no type are ignored. A type list such as [string, "null"] is
-// compared as a whole, so it differs from plain string.
+// that declare no type are ignored. A not branch is not a sibling of the
+// composition and is never compared.
+//
+// With ignoreNull (the default) a leaf whose type is null is skipped, and null
+// is dropped from a type list, so that [string, "null"] and oneOf [T, null]
+// count as a string. null marks nullability in OpenAPI 3.1 rather than a second
+// type. Without it, null counts as a type like any other.
 //
 // A composition that mixes, for example, an object and a string describes a
 // value that no consumer can model with one static type, and most code
@@ -38,11 +51,13 @@ const compositionBranchesSameTypeMinDistinct = 2
 // # Where it comes from
 //
 // The Oxide OpenAPI lint, which requires every leaf of a oneOf, allOf, anyOf or
-// not to have the same type.
+// not to have the same type. This rule departs from it for not branches, which
+// are never compared, and for null leaves, which ignoreNull skips.
 //
 // # Options
 //
-// None.
+//   - ignoreNull: skip null leaves and drop null from type lists before the
+//     types are compared. Default: true.
 //
 // # Bad
 //
@@ -67,18 +82,25 @@ const compositionBranchesSameTypeMinDistinct = 2
 // # Known false positives
 //
 // A deliberate union of different primitive types is reported; this is the
-// pattern the rule exists to discourage. Nullable unions written as
-// oneOf [T, type null] are reported too. Compositions that are only resolved
-// through an external $ref are not followed.
+// pattern the rule exists to discourage. With ignoreNull set to false, nullable
+// unions written as oneOf [T, type null] are reported too. Compositions that
+// are only resolved through an external $ref are not followed.
 func CompositionBranchesSameType() Rule {
 	return New(Spec{
 		Name:        "composition-branches-same-type",
-		Description: "All leaf schemas of a oneOf, allOf, anyOf or not must have the same type.",
+		Description: "All leaf schemas of a oneOf, allOf or anyOf must have the same type.",
 		HowToFix:    "Make every branch of the composition declare the same type, or restructure the schema.",
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeValidation,
-		Check:       PerSchema(checkCompositionBranchesSameType),
+		Options: []Option{
+			{
+				Name:        compositionBranchesSameTypeIgnoreNull,
+				Description: "Skip null leaves and drop null from type lists before comparing types.",
+				Default:     true,
+			},
+		},
+		Check: PerSchema(checkCompositionBranchesSameType),
 	})
 }
 
@@ -87,8 +109,9 @@ func checkCompositionBranchesSameType(call *Call, schema oas.Schema) []Finding {
 		return nil
 	}
 
+	ignoreNull := call.Bool(compositionBranchesSameTypeIgnoreNull)
 	unique := slices.Compact(
-		slices.Sorted(slices.Values(compositionBranchesSameTypeCollect(call.Root, schema.Node, 0))),
+		slices.Sorted(slices.Values(compositionBranchesSameTypeCollect(call.Root, schema.Node, 0, ignoreNull))),
 	)
 
 	return When(len(unique) >= compositionBranchesSameTypeMinDistinct, func() Finding {
@@ -101,7 +124,7 @@ func checkCompositionBranchesSameType(call *Call, schema oas.Schema) []Finding {
 }
 
 func compositionBranchesSameTypeKeywords() []string {
-	return []string{compositionBranchesSameTypeAllOf, keywordAnyOf, literalOneof, keywordNot}
+	return []string{compositionBranchesSameTypeAllOf, keywordAnyOf, literalOneof}
 }
 
 func compositionBranchesSameTypeHasComposition(schema *yaml.Node) bool {
@@ -110,7 +133,7 @@ func compositionBranchesSameTypeHasComposition(schema *yaml.Node) bool {
 	})
 }
 
-func compositionBranchesSameTypeCollect(root, schema *yaml.Node, depth int) []string {
+func compositionBranchesSameTypeCollect(root, schema *yaml.Node, depth int, ignoreNull bool) []string {
 	if depth > compositionBranchesSameTypeMaxDepth {
 		return nil
 	}
@@ -118,7 +141,7 @@ func compositionBranchesSameTypeCollect(root, schema *yaml.Node, depth int) []st
 	return seq.FlatMapSlice(compositionBranchesSameTypeKeywords(), func(keyword string) []string {
 		value := oas.Get(schema, keyword)
 		return seq.FlatMapSlice(compositionBranchesSameTypeBranches(value), func(branch *yaml.Node) []string {
-			return compositionBranchesSameTypeLeaf(root, oas.Resolve(root, branch), depth+1)
+			return compositionBranchesSameTypeLeaf(root, oas.Resolve(root, branch), depth+1, ignoreNull)
 		})
 	})
 }
@@ -131,16 +154,22 @@ func compositionBranchesSameTypeBranches(value *yaml.Node) []*yaml.Node {
 	return []*yaml.Node{value}
 }
 
-func compositionBranchesSameTypeLeaf(root, branch *yaml.Node, depth int) []string {
+func compositionBranchesSameTypeLeaf(root, branch *yaml.Node, depth int, ignoreNull bool) []string {
 	if !oas.IsMap(branch) {
 		return nil
 	}
 
 	if compositionBranchesSameTypeHasComposition(branch) {
-		return compositionBranchesSameTypeCollect(root, branch, depth)
+		return compositionBranchesSameTypeCollect(root, branch, depth, ignoreNull)
 	}
 
 	declared := oas.Types(branch)
+	if ignoreNull {
+		declared = slices.DeleteFunc(declared, func(name string) bool {
+			return name == compositionBranchesSameTypeNull
+		})
+	}
+
 	if len(declared) == 0 {
 		return nil
 	}

@@ -246,7 +246,7 @@ rules:
           - PascalCase
         ignore: []
   extra-composition-branches-same-type:
-    description: All leaf schemas of a oneOf, allOf, anyOf or not must have the same type.
+    description: All leaf schemas of a oneOf, allOf or anyOf must have the same type.
     message: "{{error}}"
     howToFix: Make every branch of the composition declare the same type, or restructure the schema.
     given: $
@@ -255,7 +255,8 @@ rules:
     type: validation
     then:
       function: extra-composition-branches-same-type
-      functionOptions: {}
+      functionOptions:
+        ignoreNull: true
   extra-consistent-property-name-and-type:
     description: Properties with the same name in different schemas must have the same type.
     message: "{{error}}"
