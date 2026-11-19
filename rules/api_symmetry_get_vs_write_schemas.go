@@ -9,6 +9,7 @@ import (
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -17,8 +18,8 @@ import (
 const (
 	apiSymmetryGetVsWriteSchemasMaxDepth = 24
 	apiSymmetryGetVsWriteSchemasSchemas  = "#/components/schemas/"
-	apiSymmetryGetVsWriteSchemasRefSufix = "Reference"
-	apiSymmetryGetVsWriteSchemasPrototyp = "Prototype"
+	apiSymmetryGetVsWriteSchemasRefSufix = "reference"
+	apiSymmetryGetVsWriteSchemasPrototyp = "prototype"
 	apiSymmetryGetVsWriteSchemasOKCode   = "200"
 	apiSymmetryGetVsWriteSchemasObject   = "object"
 	apiSymmetryGetVsWriteSchemasArray    = "array"
@@ -101,7 +102,12 @@ func apiSymmetryGetVsWriteSchemasSiblingRE() *regexp.Regexp {
 //
 // # Options
 //
-// None.
+//   - casing (string or list, default "PascalCase"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case
+//     or lowercase. It decides how the Summary, Prototype, Patch and Reference
+//     suffixes are attached to the canonical name: Pet_prototype in snake_case.
+//     The variant names are built in the first listed convention, an empty list
+//     disables the rule and an unknown value is reported.
 //
 // # Bad
 //
@@ -153,7 +159,8 @@ func APISymmetryGetVsWriteSchemas() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Check:       OnDocument(checkAPISymmetryGetVsWriteSchemas),
+		Options:     []Option{casingOption("Convention of the schema names", casing.Pascal)},
+		Check:       WithCasing(checkAPISymmetryGetVsWriteSchemas),
 	})
 }
 
@@ -162,6 +169,7 @@ type apiSymmetryGetVsWriteSchemasState struct {
 	root      *yaml.Node
 	schemas   *yaml.Node
 	writeOnly bool
+	allowed   casing.Set
 }
 
 // apiSymmetryGetVsWriteSchemasEntry is a key and value of a mapping.
@@ -188,9 +196,9 @@ func apiSymmetryGetVsWriteSchemasMembers(schema *yaml.Node, keywords ...string) 
 }
 
 // checkAPISymmetryGetVsWriteSchemas compares every variant with its canonical schema.
-func checkAPISymmetryGetVsWriteSchemas(call *Call) []Finding {
+func checkAPISymmetryGetVsWriteSchemas(call *Call, allowed casing.Set) []Finding {
 	schemas := oas.Dig(call.Root, "components", "schemas")
-	if !oas.IsMap(schemas) {
+	if !oas.IsMap(schemas) || len(allowed) == 0 {
 		return nil
 	}
 
@@ -200,9 +208,10 @@ func checkAPISymmetryGetVsWriteSchemas(call *Call) []Finding {
 			canonical := oas.Get(schemas, name)
 
 			return seq.FlatMapSlice(
-				[]string{"Summary", apiSymmetryGetVsWriteSchemasPrototyp, "Patch"},
-				func(variant string) []Finding {
-					node := oas.Get(schemas, name+variant)
+				[]string{"summary", apiSymmetryGetVsWriteSchemasPrototyp, "patch"},
+				func(word string) []Finding {
+					variant := allowed.Append(name, word)
+					node := oas.Get(schemas, variant)
 					if !oas.IsMap(node) {
 						return nil
 					}
@@ -210,13 +219,14 @@ func checkAPISymmetryGetVsWriteSchemas(call *Call) []Finding {
 					state := &apiSymmetryGetVsWriteSchemasState{
 						root:      call.Root,
 						schemas:   schemas,
-						writeOnly: variant == apiSymmetryGetVsWriteSchemasPrototyp,
+						writeOnly: word == apiSymmetryGetVsWriteSchemasPrototyp,
+						allowed:   allowed,
 					}
 
 					return When(!state.fragment(node, canonical, false, 0), func() Finding {
 						return Finding{
 							Node:    node,
-							Path:    oas.JoinAll("$", "components", "schemas", name+variant),
+							Path:    oas.JoinAll("$", "components", "schemas", variant),
 							Message: "variant schema should be a graph fragment of the canonical schema " + name,
 						}
 					})
@@ -443,7 +453,7 @@ func (s *apiSymmetryGetVsWriteSchemasState) meets(
 func (s *apiSymmetryGetVsWriteSchemasState) replaceReference(node *yaml.Node) *yaml.Node {
 	name, ok := strings.CutPrefix(oas.Ref(node), apiSymmetryGetVsWriteSchemasSchemas)
 	if ok {
-		base, found := strings.CutSuffix(name, apiSymmetryGetVsWriteSchemasRefSufix)
+		base, found := strings.CutSuffix(name, s.allowed.Append("", apiSymmetryGetVsWriteSchemasRefSufix))
 		candidate := oas.Get(s.schemas, base)
 
 		if found && oas.IsMap(candidate) && !s.includesReference(candidate, name) {

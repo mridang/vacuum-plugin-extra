@@ -3,11 +3,11 @@ package rules
 import (
 	"slices"
 	"strings"
-	"unicode"
 
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -33,6 +33,13 @@ const booleanParameterPrefixOption = "prefixes"
 //
 // # Options
 //
+//   - casing (string or list, default camelCase, snake_case and kebab-case):
+//     kebab-case, snake_case, camelCase, PascalCase, SCREAMING_SNAKE_CASE,
+//     SCREAMING-KEBAB-CASE, dot.case or lowercase. It decides what must follow
+//     the prefix: an upper-case letter in camelCase and PascalCase (where the
+//     prefix is capitalised too), the separator in the others and any character
+//     in lowercase. A bare prefix always passes. An empty list disables the rule
+//     and an unknown value is reported.
 //   - prefixes: list of allowed prefixes. Default: is, has. An empty list
 //     disables the rule.
 //
@@ -56,7 +63,7 @@ const booleanParameterPrefixOption = "prefixes"
 //
 // Names that are established by an external protocol (for example a "dryRun"
 // query flag) are flagged; add a suppression or extend the prefixes. Matching
-// is case sensitive, so "IsActive" is rejected.
+// is case sensitive, so "IsActive" is rejected unless PascalCase is allowed.
 func BooleanParameterPrefix() Rule {
 	return New(Spec{
 		Name:        "boolean-parameter-prefix",
@@ -65,18 +72,21 @@ func BooleanParameterPrefix() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Options: []Option{{
-			Name:        booleanParameterPrefixOption,
-			Description: "Allowed name prefixes for boolean parameters.",
-			Default:     []string{"is", "has"},
-		}},
-		Check: OnDocument(checkBooleanParameterPrefix),
+		Options: []Option{
+			casingOption("Convention of the parameter name", casing.Camel, casing.Snake, casing.Kebab),
+			{
+				Name:        booleanParameterPrefixOption,
+				Description: "Allowed name prefixes for boolean parameters.",
+				Default:     []string{"is", "has"},
+			},
+		},
+		Check: WithCasing(checkBooleanParameterPrefix),
 	})
 }
 
-func checkBooleanParameterPrefix(call *Call) []Finding {
+func checkBooleanParameterPrefix(call *Call, allowed casing.Set) []Finding {
 	prefixes := call.Strings(booleanParameterPrefixOption)
-	if len(prefixes) == 0 {
+	if len(prefixes) == 0 || len(allowed) == 0 {
 		return nil
 	}
 
@@ -86,7 +96,7 @@ func checkBooleanParameterPrefix(call *Call) []Finding {
 		return When(
 			name != "" &&
 				booleanParameterPrefixIsBoolean(call.Root, parameter.Node) &&
-				!booleanParameterPrefixMatches(name, prefixes),
+				!booleanParameterPrefixMatches(name, prefixes, allowed),
 			func() Finding {
 				return Finding{
 					Node:    oas.Get(parameter.Node, "name"),
@@ -102,20 +112,11 @@ func booleanParameterPrefixIsBoolean(root, parameter *yaml.Node) bool {
 	return oas.HasType(oas.Resolve(root, oas.Get(parameter, "schema")), "boolean")
 }
 
-func booleanParameterPrefixMatches(name string, prefixes []string) bool {
+func booleanParameterPrefixMatches(name string, prefixes []string, allowed casing.Set) bool {
 	return slices.ContainsFunc(prefixes, func(prefix string) bool {
-		rest, ok := strings.CutPrefix(name, prefix)
-		if !ok {
-			return false
-		}
-
-		if rest == "" {
-			return true
-		}
-
-		first := []rune(rest)[0]
-
-		return unicode.IsUpper(first) || first == '_' || first == '-'
+		return name == prefix || slices.ContainsFunc(allowed, func(convention casing.Casing) bool {
+			return convention.HasWordPrefix(name, prefix)
+		})
 	})
 }
 

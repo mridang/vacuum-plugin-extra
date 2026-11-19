@@ -120,4 +120,42 @@ components:
 		ruletest.RequireClean(t, rule, doc, ruletest.Options{"prefixes": []any{"can"}})
 		ruletest.RequirePaths(t, rule, doc, nil, "$.components.parameters.Active.name")
 	})
+
+	t.Run("honours the casing option", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+components:
+  parameters:
+    Pascal:
+      name: IsActive
+      in: query
+      schema:
+        type: boolean
+    Dotted:
+      name: is.active
+      in: query
+      schema:
+        type: boolean
+    Snake:
+      name: is_active
+      in: query
+      schema:
+        type: boolean
+    Bare:
+      name: is
+      in: query
+      schema:
+        type: boolean
+`)
+
+		ruletest.RequirePaths(t, rule, doc, nil,
+			"$.components.parameters.Pascal.name", "$.components.parameters.Dotted.name")
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "dot.case"},
+			"$.components.parameters.Pascal.name", "$.components.parameters.Snake.name")
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": []string{"PascalCase", "snake_case"}},
+			"$.components.parameters.Dotted.name")
+		ruletest.RequireClean(t, rule, doc, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "bogus"}, "$")
+	})
 }
