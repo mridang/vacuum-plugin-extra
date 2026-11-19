@@ -15,6 +15,17 @@
       }
     ],
     [
+      "@mridang/semantic-release-oci",
+      {
+        "dockerRegistry": "docker.io",
+        "dockerProject": "mridang",
+        "dockerImage": "vacuum-extra",
+        "dockerTags": ["latest", "{{major}}", "{{version}}"],
+        "dockerPlatform": ["linux/amd64", "linux/arm64"],
+        "dockerTimeout": 3600000
+      }
+    ],
+    [
       "@semantic-release/git",
       {
         "assets": [

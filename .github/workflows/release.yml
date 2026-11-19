@@ -41,7 +41,18 @@ jobs:
       - name: Run tests
         run: go test ./...
 
+      # Multi-platform `docker buildx build` (run internally by
+      # @mridang/semantic-release-oci) needs a container-driver builder; the
+      # default docker driver cannot emit a multi-arch manifest.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Run semantic-release
         uses: mridang/action-semantic-release@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          # @mridang/semantic-release-oci performs `docker login` itself using
+          # these; no separate docker/login-action step is needed.
+          DOCKER_REGISTRY_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_TOKEN }}
