@@ -8,10 +8,22 @@ COVER_DIR := .out/cover
 JUNIT_FILE := .out/junit.xml
 LCOV_FILE := .out/lcov.info
 
+BUILD_DIR := build
+BINARY := vacuum-extra
+PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64
+
 default: test
 
+# Cross-compile the CLI for every platform
+# Creates the build directory and places the binaries inside.
 build:
-	go build ./...
+	mkdir -p $(BUILD_DIR)
+	@for platform in $(PLATFORMS); do \
+		os=$${platform%/*}; arch=$${platform#*/}; ext=""; \
+		if [ "$$os" = windows ]; then ext=".exe"; fi; \
+		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch go build -trimpath -ldflags "-s -w" \
+			-o $(BUILD_DIR)/$(BINARY)-$$os-$$arch$$ext ./cmd/$(BINARY) || exit 1; \
+	done
 
 test: clean-coverage ensure-gotestsum
 	mkdir -p $(dir $(LCOV_FILE))
@@ -35,7 +47,7 @@ clean-coverage:
 	rm -rf .out
 
 clean: clean-coverage
-	rm -rf build
+	rm -rf $(BUILD_DIR)
 
 ensure-gotestsum:
 	@if ! command -v $(GOTESTSUM) >/dev/null 2>&1; then \
