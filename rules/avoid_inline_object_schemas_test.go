@@ -44,6 +44,40 @@ components:
 `), ruletest.Options{"allowReferenceUnions": true})
 	})
 
+	t.Run("accepts an inline allOf member next to a reference when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(avoidInlineAllOfExtension), ruletest.Options{"allowAllOfExtension": true})
+	})
+
+	t.Run("flags an inline allOf member next to a reference by default", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc31(avoidInlineAllOfExtension), nil)
+
+		require.Equal(t, []string{"$.components.schemas.Extended.allOf[1]"}, ruletest.Paths(results))
+	})
+
+	t.Run("flags an allOf of inline members only when extension is allowed", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Both:
+      allOf:
+        - type: object
+          properties: {a: {type: string}}
+        - type: object
+          properties: {b: {type: string}}
+`), ruletest.Options{"allowAllOfExtension": true})
+
+		require.Equal(t,
+			[]string{"$.components.schemas.Both.allOf[0]", "$.components.schemas.Both.allOf[1]"},
+			ruletest.Paths(results),
+		)
+	})
+
 	t.Run("flags an inline request body object", func(t *testing.T) {
 		t.Parallel()
 
@@ -208,3 +242,14 @@ paths:
 `), nil)
 	})
 }
+
+const avoidInlineAllOfExtension = `
+components:
+  schemas:
+    Base: {type: object, properties: {a: {type: string}}}
+    Extended:
+      allOf:
+        - $ref: "#/components/schemas/Base"
+        - type: object
+          properties: {b: {type: string}}
+`

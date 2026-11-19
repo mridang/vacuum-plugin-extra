@@ -38,6 +38,10 @@ import (
 //   - allowReferenceUnions (bool, default false): do not report a oneOf, anyOf
 //     or allOf whose members are all $refs (or a plain null type). Such a union
 //     defines no object itself, so it is often acceptable inline.
+//   - allowAllOfExtension (bool, default false): do not report an inline allOf
+//     member when a sibling member of the same allOf is a $ref. That shape is
+//     how a schema extends a named schema with extra properties. An allOf of
+//     inline members only is still reported.
 //
 // # Bad
 //
@@ -90,13 +94,50 @@ func AvoidInlineObjectSchemas() Rule {
 			Name:        "allowReferenceUnions",
 			Description: "Do not report compositions whose members are all $refs or a null type.",
 			Default:     false,
+		}, {
+			Name:        "allowAllOfExtension",
+			Description: "Do not report an inline allOf member when a sibling member of the same allOf is a $ref.",
+			Default:     false,
 		}},
-		Check: PerSchema(checkAvoidInlineObjectSchemas),
+		Check: func(call *Call) []Finding {
+			extensions := avoidInlineObjectSchemasExtensions(call)
+
+			return PerSchema(func(call *Call, schema oas.Schema) []Finding {
+				return checkAvoidInlineObjectSchemas(call, schema, extensions)
+			})(call)
+		},
 	})
 }
 
-func checkAvoidInlineObjectSchemas(call *Call, schema oas.Schema) []Finding {
-	inline := avoidInlineObjectSchemasIsInlineObject(schema.Node, call.Bool("allowReferenceUnions"))
+// avoidInlineObjectSchemasExtensions returns the inline allOf members that
+// extend a named schema: members of an allOf that also holds a $ref member. It
+// is empty unless allowAllOfExtension is set.
+func avoidInlineObjectSchemasExtensions(call *Call) map[*yaml.Node]bool {
+	extensions := map[*yaml.Node]bool{}
+
+	if !call.Bool("allowAllOfExtension") {
+		return extensions
+	}
+
+	for schema := range oas.Schemas(call.Root) {
+		members := oas.Get(schema.Node, avoidInlineObjectSchemasAllOf)
+		if members == nil || !slices.ContainsFunc(members.Content, func(member *yaml.Node) bool {
+			return oas.Ref(member) != ""
+		}) {
+			continue
+		}
+
+		for _, member := range members.Content {
+			extensions[member] = true
+		}
+	}
+
+	return extensions
+}
+
+func checkAvoidInlineObjectSchemas(call *Call, schema oas.Schema, extensions map[*yaml.Node]bool) []Finding {
+	inline := !extensions[schema.Node] &&
+		avoidInlineObjectSchemasIsInlineObject(schema.Node, call.Bool("allowReferenceUnions"))
 
 	negated := oas.UnderNegation(schema.Path)
 

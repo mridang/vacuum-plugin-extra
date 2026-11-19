@@ -181,6 +181,7 @@ rules:
     then:
       function: extra-avoid-inline-object-schemas
       functionOptions:
+        allowAllOfExtension: false
         allowReferenceUnions: false
   extra-banned-words-in-docs:
     description: Descriptions, summaries and titles must not contain the configured banned words.
