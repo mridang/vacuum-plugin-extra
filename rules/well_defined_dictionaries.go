@@ -22,6 +22,7 @@ const (
 	wellDefinedDictionariesValueType     = "requireValueType"
 	wellDefinedDictionariesNested        = "forbidNestedDictionaries"
 	wellDefinedDictionariesDefinition    = "requireObjectDefinition"
+	wellDefinedDictionariesOpenModels    = "allowOpenModels"
 	wellDefinedDictionariesEmptyObjects  = "allowEmptyObjects"
 	wellDefinedDictionariesFalse         = "false"
 	wellDefinedDictionariesMaxDepth      = 32
@@ -61,6 +62,11 @@ const (
 //   - with forbidNestedDictionaries, a dictionary whose value schema is itself
 //     a dictionary is reported.
 //
+// With allowOpenModels, an open model (properties together with
+// additionalProperties true) is an extensible model and not a dictionary: it
+// is not checked, and a dictionary whose value is an open model is not
+// reported as nested.
+//
 // Findings are reported at the object schema, as IBM does. $ref values are
 // resolved. Members of allOf, oneOf, anyOf and not are not evaluated on their
 // own; only the schema that composes them is.
@@ -84,6 +90,8 @@ const (
 //     values are dictionaries.
 //   - requireObjectDefinition (bool, default true): report object schemas that
 //     define neither properties nor a dictionary.
+//   - allowOpenModels (bool, default false): treat an object with properties
+//     and additionalProperties true as an extensible model, not a dictionary.
 //   - allowEmptyObjects (bool, default false): accept an object with no
 //     properties when additionalProperties is exactly false or maxProperties is
 //     0. For oneOf and anyOf every member must be such an object.
@@ -134,6 +142,11 @@ func WellDefinedDictionaries() Rule {
 				Name:        wellDefinedDictionariesDefinition,
 				Description: "Report object schemas that define neither properties nor a dictionary.",
 				Default:     true,
+			},
+			{
+				Name:        wellDefinedDictionariesOpenModels,
+				Description: "Treat an object with properties and additionalProperties true as an extensible model.",
+				Default:     false,
 			},
 			{
 				Name:        wellDefinedDictionariesEmptyObjects,
@@ -218,6 +231,11 @@ func wellDefinedDictionariesCheck(call *Call, schema oas.Schema) []Finding {
 		return nil
 	}
 
+	openModels := call.Bool(wellDefinedDictionariesOpenModels)
+	if openModels && wellDefinedDictionariesOpen(root, schema.Node) {
+		return nil
+	}
+
 	report := func(message string) Finding {
 		return Finding{Node: schema.Node, Path: schema.Path, Message: message}
 	}
@@ -245,7 +263,9 @@ func wellDefinedDictionariesCheck(call *Call, schema oas.Schema) []Finding {
 		),
 		When(
 			call.Bool(wellDefinedDictionariesNested) &&
-				wellDefinedDictionariesValuesHave(root, schema.Node, wellDefinedDictionariesNestedValue),
+				wellDefinedDictionariesValuesHave(root, schema.Node, func(root, value *yaml.Node) bool {
+					return wellDefinedDictionariesNestedValue(root, value, openModels)
+				}),
 			func() Finding {
 				return report(wellDefinedDictionariesMsgNested)
 			},
@@ -339,11 +359,21 @@ func wellDefinedDictionariesAmbiguous(root, value *yaml.Node) bool {
 	}, 0)
 }
 
-// wellDefinedDictionariesNestedValue reports a dictionary value that is itself a dictionary.
-func wellDefinedDictionariesNestedValue(root, value *yaml.Node) bool {
+// wellDefinedDictionariesNestedValue reports a dictionary value that is itself a dictionary. With openModels, an
+// open model is not a dictionary.
+func wellDefinedDictionariesNestedValue(root, value *yaml.Node, openModels bool) bool {
 	resolved := oas.Resolve(root, value)
 
-	return oas.IsMap(resolved) && wellDefinedDictionariesDictionary(root, resolved)
+	return oas.IsMap(resolved) && wellDefinedDictionariesDictionary(root, resolved) &&
+		(!openModels || !wellDefinedDictionariesOpen(root, resolved))
+}
+
+// wellDefinedDictionariesOpen reports an extensible model: properties beside additionalProperties true.
+func wellDefinedDictionariesOpen(root, schema *yaml.Node) bool {
+	return wellDefinedDictionariesDefines(root, schema, literalProperties) &&
+		wellDefinedDictionariesHas(root, schema, func(s *yaml.Node) bool {
+			return oas.IsTrue(oas.Get(s, wellDefinedDictionariesAdditional))
+		}, 0)
 }
 
 // wellDefinedDictionariesHas mirrors IBM schemaHasConstraint: the predicate holds for the schema, for any allOf
