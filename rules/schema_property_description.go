@@ -17,7 +17,8 @@ import (
 // Every property of every schema must have a description that is not empty and
 // not just whitespace. A property written as a $ref satisfies the rule when its
 // own node or the referenced schema has a description. The finding is reported
-// on the property.
+// on the property. Properties under a not, if, then or else keyword are not
+// checked, because those schemas are constraint fragments and not data.
 //
 // # Why
 //
@@ -70,6 +71,10 @@ func SchemaPropertyDescription() Rule {
 
 // checkSchemaPropertyDescription reports properties without a description.
 func checkSchemaPropertyDescription(call *Call, schema oas.Schema) []Finding {
+	if oas.UnderNegation(schema.Path) {
+		return nil
+	}
+
 	return seq.FlatMapPairs(oas.Pairs(oas.Get(schema.Node, "properties")), func(name, property *yaml.Node) []Finding {
 		return When(
 			!schemaPropertyDescriptionPresent(oas.Text(oas.Get(property, "description"))) &&
