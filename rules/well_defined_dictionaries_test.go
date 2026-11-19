@@ -9,6 +9,29 @@ import (
 	"github.com/mridang/vacuum-plugin-extra/rules"
 )
 
+// emptyObjectsDoc returns object schemas that declare no properties: closed, capped at zero, bare and a oneOf of
+// closed objects.
+func emptyObjectsDoc() string {
+	return ruletest.Doc31(`
+components:
+  schemas:
+    Closed:
+      type: object
+      additionalProperties: false
+    Zero:
+      type: object
+      maxProperties: 0
+    Bare:
+      type: object
+    Either:
+      oneOf:
+        - type: object
+          additionalProperties: false
+        - type: object
+          additionalProperties: false
+`)
+}
+
 func TestWellDefinedDictionaries(t *testing.T) {
 	t.Parallel()
 
@@ -160,6 +183,38 @@ components:
 		}, ruletest.Paths(results))
 		require.Contains(t, ruletest.Messages(results)[0], "must define either properties")
 		ruletest.RequireClean(t, rule, doc, ruletest.Options{"requireObjectDefinition": false})
+	})
+
+	t.Run("keeps reporting empty objects by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, emptyObjectsDoc(), nil,
+			"$.components.schemas.Closed",
+			"$.components.schemas.Zero",
+			"$.components.schemas.Bare",
+			"$.components.schemas.Either")
+	})
+
+	t.Run("accepts intentionally empty objects when allowEmptyObjects is set", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, emptyObjectsDoc(), ruletest.Options{"allowEmptyObjects": true},
+			"$.components.schemas.Bare")
+	})
+
+	t.Run("accepts a oneOf of intentionally empty objects when allowEmptyObjects is set", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Either:
+      oneOf:
+        - type: object
+          additionalProperties: false
+        - type: object
+          maxProperties: 0
+`), ruletest.Options{"allowEmptyObjects": true})
 	})
 
 	t.Run("follows composition like IBM", func(t *testing.T) {
