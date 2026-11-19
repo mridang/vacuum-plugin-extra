@@ -117,4 +117,29 @@ components:
 			ruletest.Options{"casing": []string{"snake_case", "SCREAMING_SNAKE_CASE", "dot.case"}},
 			"$.components.schemas.Event.enum[3]")
 	})
+
+	t.Run("allowValues accepts listed values whatever the casing", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc30(`
+components:
+  schemas:
+    Credential:
+      type: string
+      enum: [public-key, cross-platform, date-time, auth.factor.password.set, other-value, in_progress]
+`)
+
+		ruletest.RequirePaths(t, rule, document, nil,
+			"$.components.schemas.Credential.enum[0]", "$.components.schemas.Credential.enum[1]",
+			"$.components.schemas.Credential.enum[2]", "$.components.schemas.Credential.enum[3]",
+			"$.components.schemas.Credential.enum[4]")
+		listed := []string{"public-key", "cross-platform", "date-time", "auth.factor.password.set"}
+
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowValues": listed},
+			"$.components.schemas.Credential.enum[4]")
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowValues": []string{}},
+			"$.components.schemas.Credential.enum[0]", "$.components.schemas.Credential.enum[1]",
+			"$.components.schemas.Credential.enum[2]", "$.components.schemas.Credential.enum[3]",
+			"$.components.schemas.Credential.enum[4]")
+	})
 }
