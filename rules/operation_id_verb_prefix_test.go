@@ -98,4 +98,70 @@ paths:
 		ruletest.RequirePaths(t, rule, document, ruletest.Options{"prefixes": []string{"register"}},
 			"$.paths['/pets'].get.operationId")
 	})
+
+	t.Run("expects the separator after the verb with the snake_case casing", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      operationId: list_pets
+      responses:
+        "200":
+          description: ok
+    post:
+      operationId: createPet
+      responses:
+        "201":
+          description: created
+`)
+
+		results := ruletest.Run(t, rule, document, ruletest.Options{"casing": "snake_case"})
+
+		require.Equal(t, []string{"$.paths['/pets'].post.operationId"}, ruletest.Paths(results))
+		require.Contains(t, ruletest.Messages(results)[0], "written in snake_case")
+		ruletest.RequirePaths(t, rule, document, nil, "$.paths['/pets'].get.operationId")
+		ruletest.RequireClean(t, rule, document,
+			ruletest.Options{"casing": []string{"snake_case", "camelCase"}})
+	})
+
+	t.Run("expects a capitalised verb with the PascalCase casing", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      operationId: ListPets
+      responses:
+        "200":
+          description: ok
+    post:
+      operationId: createPet
+      responses:
+        "201":
+          description: created
+`)
+
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "PascalCase"},
+			"$.paths['/pets'].post.operationId")
+	})
+
+	t.Run("disables the check for an empty casing list and reports an unknown one", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      operationId: pets
+      responses:
+        "200":
+          description: ok
+`)
+
+		ruletest.RequireClean(t, rule, document, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "bogus"}, "$")
+	})
 }

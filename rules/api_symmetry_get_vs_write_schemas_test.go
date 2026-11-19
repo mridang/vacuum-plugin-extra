@@ -256,4 +256,29 @@ components:
         other: {type: string}
 `), nil)
 	})
+
+	t.Run("finds the variants in the configured casing", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc30(apiSymmetryGetVsWriteSchemasPaths + `
+    Pet:
+      type: object
+      properties:
+        name: {type: string}
+    Pet_prototype:
+      type: object
+      properties:
+        nickname: {type: string}
+    PetPatch:
+      type: object
+      properties:
+        nickname: {type: string}
+`)
+
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "snake_case"},
+			"$.components.schemas.Pet_prototype")
+		ruletest.RequirePaths(t, rule, document, nil, "$.components.schemas.PetPatch")
+		ruletest.RequireClean(t, rule, document, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "bogus"}, "$")
+	})
 }

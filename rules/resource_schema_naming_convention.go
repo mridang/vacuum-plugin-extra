@@ -8,6 +8,7 @@ import (
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -66,7 +67,13 @@ const (
 //
 // # Options
 //
-// None.
+//   - casing (string or list, default "PascalCase"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case
+//     or lowercase. It decides how the Collection, Summary, Prototype and Patch
+//     suffixes are attached to the canonical name: Pet_collection in snake_case.
+//     The canonical name is taken from the document as written. The expected
+//     names are built in the first listed convention, an empty list disables the
+//     rule and an unknown value is reported.
 //
 // # Bad
 //
@@ -109,14 +116,21 @@ func ResourceSchemaNamingConvention() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Check:       OnDocument(checkResourceSchemaNamingConvention),
+		Options:     []Option{casingOption("Convention of the schema names", casing.Pascal)},
+		Check:       WithCasing(checkResourceSchemaNamingConvention),
 	})
 }
 
 // resourceSchemaNamingConventionChecker holds the immutable inputs of one run.
 type resourceSchemaNamingConventionChecker struct {
-	root  *yaml.Node
-	items []oas.PathItem
+	root    *yaml.Node
+	items   []oas.PathItem
+	allowed casing.Set
+}
+
+// suffixed adds the suffix word to the canonical name in the configured casing.
+func (c *resourceSchemaNamingConventionChecker) suffixed(canonical, word string) string {
+	return c.allowed.Append(canonical, word)
 }
 
 // resourceSchemaNamingConventionSchema is a located schema reference.
@@ -133,10 +147,15 @@ type resourceSchemaNamingConventionProperty struct {
 }
 
 // checkResourceSchemaNamingConvention checks every collection and instance path pair.
-func checkResourceSchemaNamingConvention(call *Call) []Finding {
+func checkResourceSchemaNamingConvention(call *Call, allowed casing.Set) []Finding {
+	if len(allowed) == 0 {
+		return nil
+	}
+
 	checker := &resourceSchemaNamingConventionChecker{
-		root:  call.Root,
-		items: slices.Collect(oas.PathItems(call.Root)),
+		root:    call.Root,
+		items:   slices.Collect(oas.PathItems(call.Root)),
+		allowed: allowed,
 	}
 
 	return seq.FlatMapSlice(checker.items, func(item oas.PathItem) []Finding {
@@ -193,10 +212,10 @@ func (c *resourceSchemaNamingConventionChecker) collection(item oas.PathItem, ca
 	}
 
 	return slices.Concat(
-		When(schema.name != "" && schema.name != canonical+"Collection", func() Finding {
+		When(schema.name != "" && schema.name != c.suffixed(canonical, "collection"), func() Finding {
 			return resourceSchemaNamingConventionFinding(
 				schema,
-				"Collection schema for path '"+item.Route+"' should use the name: "+canonical+"Collection",
+				"Collection schema for path '"+item.Route+"' should use the name: "+c.suffixed(canonical, "collection"),
 			)
 		}),
 		c.listItems(schema, resourceSchemaNamingConventionLastSegment(item.Route), canonical),
@@ -221,12 +240,12 @@ func (c *resourceSchemaNamingConventionChecker) listItems(
 	items := c.named(oas.Get(property.node, "items"), oas.Join(property.path, "items"))
 
 	return When(
-		items.name != "" && items.name != canonical && items.name != canonical+"Summary",
+		items.name != "" && items.name != canonical && items.name != c.suffixed(canonical, "summary"),
 		func() Finding {
 			return resourceSchemaNamingConventionFinding(
 				items,
 				"Items schema for collection resource list property '"+listName+
-					"' should use the name: "+canonical+" or "+canonical+"Summary",
+					"' should use the name: "+canonical+" or "+c.suffixed(canonical, "summary"),
 			)
 		},
 	)
@@ -237,12 +256,12 @@ func (c *resourceSchemaNamingConventionChecker) prototype(item oas.PathItem, met
 	schema := c.requestSchema(item, method)
 
 	return When(
-		schema.name != "" && schema.name != canonical+"Prototype" && schema.name != canonical,
+		schema.name != "" && schema.name != c.suffixed(canonical, "prototype") && schema.name != canonical,
 		func() Finding {
 			return resourceSchemaNamingConventionFinding(
 				schema,
 				"Prototype schema ("+strings.ToUpper(method)+" request body) for path '"+item.Route+
-					"' should use the name: "+canonical+"Prototype",
+					"' should use the name: "+c.suffixed(canonical, "prototype"),
 			)
 		},
 	)
@@ -252,10 +271,10 @@ func (c *resourceSchemaNamingConventionChecker) prototype(item oas.PathItem, met
 func (c *resourceSchemaNamingConventionChecker) patch(item oas.PathItem, canonical string) []Finding {
 	schema := c.requestSchema(item, resourceSchemaNamingConventionPatch)
 
-	return When(schema.name != "" && schema.name != canonical+"Patch", func() Finding {
+	return When(schema.name != "" && schema.name != c.suffixed(canonical, "patch"), func() Finding {
 		return resourceSchemaNamingConventionFinding(
 			schema,
-			"Patch schema for path '"+item.Route+"' should use the name: "+canonical+"Patch",
+			"Patch schema for path '"+item.Route+"' should use the name: "+c.suffixed(canonical, "patch"),
 		)
 	})
 }

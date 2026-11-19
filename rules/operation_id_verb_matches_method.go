@@ -8,6 +8,7 @@ import (
 
 	"github.com/daveshanley/vacuum/model"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -36,8 +37,10 @@ type operationIDVerbMatchesMethodInflection struct {
 //
 // A port of the IBM function operationIdNamingConvention, run in its strict
 // mode (as the ibm-operationid-naming-convention rule does). The operationId
-// must be exactly one acceptable verb, an underscore and the resource part of
-// the path, written as snake case words joined by underscores. The accepted
+// must be exactly one acceptable verb and the resource part of the path,
+// written in the configured casing, snake_case by default (list_bands). The
+// casing option selects another convention: camelCase expects listBands and
+// getBand, and the verb and resource logic is the same. The accepted
 // verbs depend on the HTTP method and the path shape:
 //
 //   - GET on a resource-oriented collection path (/bands): list.
@@ -68,8 +71,10 @@ type operationIDVerbMatchesMethodInflection struct {
 // media and criteria unchanged. For /bands/{id}/albums/{album_id}, GET must be
 // get_band_album or check_band_album.
 //
-// In non-strict mode (strict: false) only the verb is checked: the operationId
-// must start with one of the acceptable verbs. Operations without an
+// The expected name is built in snake_case and then converted to the configured
+// casing, so the default keeps its exact output. In non-strict mode
+// (strict: false) only the verb is checked: the operationId
+// must start with one of the acceptable verbs, written in the casing. Operations without an
 // operationId are skipped.
 //
 // # Why
@@ -84,6 +89,11 @@ type operationIDVerbMatchesMethodInflection struct {
 //
 // # Options
 //
+//   - casing (string or list, default "snake_case"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case
+//     or lowercase. The expected operationId is built in each listed convention
+//     and an identifier equal to any of them passes. An empty list disables the
+//     rule and an unknown value is reported.
 //   - strict (bool, default true): require the full verb_resource form. When
 //     false only the leading verb is checked.
 //
@@ -109,31 +119,37 @@ type operationIDVerbMatchesMethodInflection struct {
 //
 // # Known false positives and limitations
 //
-// The rule is as strict as the original: camelCase identifiers such as
-// listBands and nouns that deviate from the singularised path are reported.
+// The rule is as strict as the original: identifiers in another casing than the
+// configured one, such as listBands under the default, and nouns that deviate
+// from the singularised path are reported.
 // The inflector is a port of the English Rails rules, so unusual words follow
 // its (sometimes surprising) results.
 func OperationIDVerbMatchesMethod() Rule {
 	return New(Spec{
 		Name:        "operation-id-verb-matches-method",
 		Description: "The verb and resource of an operationId must match the HTTP method and path of the operation.",
-		HowToFix:    "Name the operation <verb>_<resource>, for example list_bands, get_band or create_band.",
+		HowToFix:    "Name it <verb><resource> in the configured casing, such as list_bands or listBands.",
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
 		Options: []Option{
+			casingOption("Convention of the operationId", casing.Snake),
 			{
 				Name:        operationIDVerbMatchesMethodStrict,
 				Description: "Require the full verb_resource form; when false only the verb is checked.",
 				Default:     true,
 			},
 		},
-		Check: OnDocument(checkOperationIDVerbMatchesMethod),
+		Check: WithCasing(checkOperationIDVerbMatchesMethod),
 	})
 }
 
 // checkOperationIDVerbMatchesMethod compares every operationId with the expected names.
-func checkOperationIDVerbMatchesMethod(call *Call) []Finding {
+func checkOperationIDVerbMatchesMethod(call *Call, allowed casing.Set) []Finding {
+	if len(allowed) == 0 {
+		return nil
+	}
+
 	routes := seq.Map(oas.PathItems(call.Root), func(item oas.PathItem) string {
 		return item.Route
 	})
@@ -146,7 +162,7 @@ func checkOperationIDVerbMatchesMethod(call *Call) []Finding {
 			return nil
 		}
 
-		message := operationIDVerbMatchesMethodMessage(operation, node.Value, routes, inflector, strict)
+		message := operationIDVerbMatchesMethodMessage(operation, node.Value, routes, inflector, strict, allowed)
 
 		return When(message != "", func() Finding {
 			return Finding{Node: node, Path: oas.Join(operation.Path, key.Value), Message: message}
@@ -161,6 +177,7 @@ func operationIDVerbMatchesMethodMessage(
 	routes []string,
 	inflector []operationIDVerbMatchesMethodInflection,
 	strict bool,
+	allowed casing.Set,
 ) string {
 	route := operation.Route
 	endsWithParam := strings.HasSuffix(route, "}")
@@ -175,7 +192,8 @@ func operationIDVerbMatchesMethodMessage(
 	}
 
 	if !strict {
-		if slices.ContainsFunc(verbs, func(verb string) bool { return strings.HasPrefix(id, verb) }) {
+		prefixes := operationIDVerbMatchesMethodInCasings(verbs, allowed)
+		if slices.ContainsFunc(prefixes, func(prefix string) bool { return strings.HasPrefix(id, prefix) }) {
 			return ""
 		}
 
@@ -183,9 +201,9 @@ func operationIDVerbMatchesMethodMessage(
 	}
 
 	noun := operationIDVerbMatchesMethodNoun(route, verbs, endsWithParam, inflector)
-	expected := seq.Map(slices.Values(verbs), func(verb string) string {
+	expected := operationIDVerbMatchesMethodInCasings(seq.Map(slices.Values(verbs), func(verb string) string {
 		return verb + "_" + noun
-	})
+	}), allowed)
 
 	if slices.Contains(expected, id) {
 		return ""
@@ -197,6 +215,21 @@ func operationIDVerbMatchesMethodMessage(
 		strings.Join(expected, " or "),
 		id,
 	)
+}
+
+// operationIDVerbMatchesMethodInCasings writes snake_case names in every
+// convention of the set. The snake_case convention keeps the name untouched, so
+// the default is byte for byte what the rule always produced.
+func operationIDVerbMatchesMethodInCasings(names []string, allowed casing.Set) []string {
+	return slices.Compact(seq.FlatMapSlice(names, func(name string) []string {
+		return seq.Map(slices.Values(allowed), func(convention casing.Casing) string {
+			if convention == casing.Snake {
+				return name
+			}
+
+			return convention.Convert(name)
+		})
+	}))
 }
 
 // operationIDVerbMatchesMethodVerbs returns the acceptable verbs for an operation, or nil when unconstrained.

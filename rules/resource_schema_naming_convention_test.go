@@ -1,6 +1,7 @@
 package rules_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -205,5 +206,32 @@ components:
     Whatever:
       type: object
 `), nil)
+	})
+
+	t.Run("derives the names in the configured casing", func(t *testing.T) {
+		t.Parallel()
+
+		snake := strings.NewReplacer(
+			"PetCollection", "Pet_collection",
+			"PetPrototype", "Pet_prototype",
+			"PetPatch", "Pet_patch",
+			"PetSummary", "Pet_summary",
+		).Replace(resourceSchemaNamingConventionGood)
+		options := ruletest.Options{"casing": "snake_case"}
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(snake), options)
+		require.NotEmpty(t, ruletest.Run(t, rule, ruletest.Doc30(snake), nil))
+		require.Contains(t,
+			ruletest.Messages(ruletest.Run(t, rule, ruletest.Doc30(resourceSchemaNamingConventionGood), options)),
+			"Collection schema for path '/pets' should use the name: Pet_collection")
+	})
+
+	t.Run("disables the check for an empty casing list and reports an unknown one", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc30(resourceSchemaNamingConventionGood)
+
+		ruletest.RequireClean(t, rule, document, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "bogus"}, "$")
 	})
 }

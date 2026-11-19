@@ -77,4 +77,41 @@ components:
           enum: ["00000000-0000-0000-0000-000000000000"]
 `), nil)
 	})
+
+	t.Run("honours the casing option", func(t *testing.T) {
+		t.Parallel()
+
+		document := ruletest.Doc30(`
+paths: {}
+components:
+  schemas:
+    Instance:
+      type: object
+      properties:
+        project_uuid:
+          type: string
+          format: uuid
+        projectUuid:
+          type: string
+          format: uuid
+        ownerUUID:
+          type: string
+          format: uuid
+`)
+		base := "$.components.schemas.Instance.properties."
+
+		ruletest.RequirePaths(t, rule, document, nil, base+"project_uuid")
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "camelCase"},
+			base+"projectUuid", base+"ownerUUID")
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": []string{"snake_case", "camelCase"}},
+			base+"project_uuid", base+"projectUuid", base+"ownerUUID")
+		ruletest.RequireClean(t, rule, document, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"casing": "bogus"}, "$")
+
+		messages := ruletest.Messages(ruletest.Run(t, rule, document, ruletest.Options{"casing": "camelCase"}))
+		require.ElementsMatch(t, []string{
+			"property projectUuid is a uuid; rename it to projectId",
+			"property ownerUUID is a uuid; rename it to ownerID",
+		}, messages)
+	})
 }

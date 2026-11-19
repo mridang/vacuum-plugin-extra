@@ -231,4 +231,106 @@ paths:
           description: ok
 `), nil)
 	})
+
+	t.Run("expects camelCase names with the camelCase casing", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+paths:
+  /bands:
+    get:
+      operationId: listBands
+      responses:
+        "200":
+          description: ok
+    post:
+      operationId: createBand
+      responses:
+        "200":
+          description: ok
+  /bands/{id}:
+    get:
+      operationId: getBands
+      responses:
+        "200":
+          description: ok
+    delete:
+      operationId: delete_band
+      responses:
+        "200":
+          description: ok
+`)
+		results := ruletest.Run(t, rule, doc, ruletest.Options{"casing": "camelCase"})
+
+		require.ElementsMatch(t, []string{
+			"$.paths['/bands/{id}'].get.operationId",
+			"$.paths['/bands/{id}'].delete.operationId",
+		}, ruletest.Paths(results))
+		require.Contains(t, ruletest.Messages(results),
+			"operationIds should follow naming convention: operationId should be getBand but it's getBands instead")
+	})
+
+	t.Run("still reports camelCase names by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /bands:
+    get:
+      operationId: listBands
+      responses:
+        "200":
+          description: ok
+  /bands/{id}:
+    head:
+      responses:
+        "200":
+          description: ok
+`), nil, "$.paths['/bands'].get.operationId")
+	})
+
+	t.Run("accepts any casing of a list and checks the verb in it", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+paths:
+  /bands:
+    get:
+      operationId: list_bands
+      responses:
+        "200":
+          description: ok
+    post:
+      operationId: createBand
+      responses:
+        "200":
+          description: ok
+  /bands/{id}:
+    head:
+      responses:
+        "200":
+          description: ok
+`)
+
+		ruletest.RequireClean(t, rule, doc, ruletest.Options{"casing": []string{"snake_case", "camelCase"}})
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "PascalCase", "strict": false},
+			"$.paths['/bands'].get.operationId", "$.paths['/bands'].post.operationId")
+	})
+
+	t.Run("reports an empty casing list as disabled and an unknown value", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+paths:
+  /bands:
+    get:
+      operationId: anything
+      responses:
+        "200":
+          description: ok
+`)
+
+		ruletest.RequireClean(t, rule, doc, ruletest.Options{"casing": []string{}})
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "bogus"}, "$")
+	})
 }
