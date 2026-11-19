@@ -21,6 +21,7 @@ const (
 	responseStatusCodeSemanticsOK             = "200"
 	responseStatusCodeSemanticsCreated        = "201"
 	responseStatusCodeSemanticsSwitching      = "101"
+	responseStatusCodeSemanticsAllowPutNoCont = "allowPutNoContent"
 	responseStatusCodeSemanticsRedirectMsg    = "A 301, 302, 305 or 307 response should include a response body, " +
 		"use a different status code for responses without content"
 )
@@ -49,7 +50,9 @@ const (
 //     path has no 204 response. IBM reports this even when the operation has no
 //     success code at all.
 //   - PUT must return 200, 201 or 202, or 204 when the GET on the same path
-//     itself declares a 204 response (a minimally represented resource).
+//     itself declares a 204 response (a minimally represented resource). With
+//     allowPutNoContent, a PUT that returns 204 is accepted whatever the GET
+//     declares, as RFC 9110 allows for a replace with nothing to return.
 //   - PATCH must return 200 or 202.
 //   - 202 must not be combined with other 2xx codes.
 //   - 301, 302, 305 and 307 responses must have content (reported on responses,
@@ -69,7 +72,8 @@ const (
 //
 // # Options
 //
-// None.
+//   - allowPutNoContent (bool, default false): accept a PUT that answers 204 No
+//     Content.
 //
 // # Bad
 //
@@ -108,7 +112,14 @@ func ResponseStatusCodeSemantics() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Check:       PerOperation(checkResponseStatusCodeSemantics),
+		Options: []Option{
+			{
+				Name:        responseStatusCodeSemanticsAllowPutNoCont,
+				Description: "Accept a PUT that answers 204 No Content.",
+				Default:     false,
+			},
+		},
+		Check: PerOperation(checkResponseStatusCodeSemantics),
 	})
 }
 
@@ -119,6 +130,8 @@ type responseStatusCodeSemanticsOperation struct {
 	codes     []string
 	success   []string
 	base      string
+	// allowPutNoContent accepts a PUT that answers 204 whatever the GET on the path declares.
+	allowPutNoContent bool
 }
 
 // checkResponseStatusCodeSemantics applies the IBM status code checks to one operation.
@@ -142,6 +155,8 @@ func checkResponseStatusCodeSemantics(call *Call, operation oas.Operation) []Fin
 		codes:     codes,
 		success:   seq.Filter(slices.Values(codes), successPattern.MatchString),
 		base:      oas.Join(operation.Path, "responses"),
+
+		allowPutNoContent: call.Bool(responseStatusCodeSemanticsAllowPutNoCont),
 	}
 
 	return slices.Concat(
@@ -243,6 +258,7 @@ func responseStatusCodeSemanticsMethodChecks(s *responseStatusCodeSemanticsOpera
 		),
 		When(
 			s.operation.Method == methodPut && len(s.success) > 0 &&
+				(!s.allowPutNoContent || !noContent) &&
 				!anyOf(
 					responseStatusCodeSemanticsOK,
 					responseStatusCodeSemanticsCreated,
