@@ -365,7 +365,7 @@ func wellDefinedDictionariesNestedValue(root, value *yaml.Node, openModels bool)
 	resolved := oas.Resolve(root, value)
 
 	return oas.IsMap(resolved) && wellDefinedDictionariesDictionary(root, resolved) &&
-		!(openModels && wellDefinedDictionariesOpen(root, resolved))
+		(!openModels || !wellDefinedDictionariesOpen(root, resolved))
 }
 
 // wellDefinedDictionariesOpen reports an extensible model: properties beside additionalProperties true.
