@@ -200,7 +200,7 @@ func (c exampleBodyKeyCaseContext) properties(schema *yaml.Node, depth int) map[
 		merged[key.Value] = value
 	}
 
-	for _, keyword := range []string{"allOf", "oneOf", "anyOf"} {
+	for _, keyword := range []string{"allOf", literalOneof, keywordAnyOf} {
 		for _, member := range oas.Items(oas.Get(schema, keyword)) {
 			for name, value := range c.properties(member, depth+1) {
 				if _, exists := merged[name]; !exists {
