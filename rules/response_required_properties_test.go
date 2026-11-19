@@ -200,4 +200,37 @@ paths:
                   ids: {type: array, readOnly: true, items: {type: string}}
 `), nil, "$.paths['/things'].get.responses['200'].content['application/json'].schema.properties.ids")
 	})
+
+	t.Run("ignoreWithDefault skips properties that declare a default", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+paths:
+  /things:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name]
+                properties:
+                  name: {type: string}
+                  tags: {type: array, default: [], items: {type: string}}
+                  mode: {$ref: "#/components/schemas/Mode"}
+                  ids: {type: array, items: {type: string}}
+components:
+  schemas:
+    Mode:
+      type: string
+      enum: [on, off]
+      default: on
+`)
+		base := "$.paths['/things'].get.responses['200'].content['application/json'].schema.properties."
+
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"ignoreWithDefault": true}, base+"ids")
+		ruletest.RequirePaths(t, rule, doc, nil, base+"tags", base+"mode", base+"ids")
+	})
 }
