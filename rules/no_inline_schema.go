@@ -17,6 +17,10 @@ const (
 	noInlineSchemaRequestBodies   = "requestBodies"
 	noInlineSchemaResponses       = "responses"
 	noInlineSchemaAllowPrimitives = "allowPrimitives"
+	noInlineSchemaAllowUnions     = "allowReferenceUnions"
+	noInlineSchemaOneOf           = "oneOf"
+	noInlineSchemaItems           = "items"
+	noInlineSchemaArray           = "array"
 )
 
 // NoInlineSchema returns the extra-no-inline-schema rule.
@@ -47,8 +51,12 @@ const (
 //   - requestBodies (bool, default true): check request body schemas.
 //   - responses (bool, default true): check response schemas.
 //   - allowPrimitives (bool, default false): accept inline schemas whose type is
-//     a plain string, number, integer or boolean, which have no useful name to
+//     a plain string, number, integer or boolean, or an array whose items are
+//     such a scalar, a $ref or another such array; none has a useful name to
 //     extract. Mainly useful for parameters.
+//   - allowReferenceUnions (bool, default false): accept inline schemas that are a
+//     oneOf whose members are all $refs or plain scalars, such as a reference or
+//     null.
 //
 // # Bad
 //
@@ -69,7 +77,8 @@ const (
 // # Known false positives and limitations
 //
 // With the defaults every inline parameter schema is reported, including
-// trivial ones such as type: string; enable allowPrimitives to relax that.
+// trivial ones such as type: string; enable allowPrimitives and
+// allowReferenceUnions to relax that.
 // Reusable parameters, request bodies and responses declared under components
 // are not checked, since extracting an inline schema out of them is their own
 // refactoring.
@@ -88,6 +97,11 @@ func NoInlineSchema() Rule {
 			{
 				Name:        noInlineSchemaAllowPrimitives,
 				Description: "Accept inline string, number, integer and boolean schemas.",
+				Default:     false,
+			},
+			{
+				Name:        noInlineSchemaAllowUnions,
+				Description: "Accept inline oneOf schemas whose members are all $refs or scalars.",
 				Default:     false,
 			},
 		},
@@ -172,13 +186,54 @@ func noInlineSchemaReport(call *Call, schema *yaml.Node, path string, what strin
 		return nil
 	}
 
-	return When(!call.Bool(noInlineSchemaAllowPrimitives) || !noInlineSchemaPrimitive(schema), func() Finding {
+	return When(!noInlineSchemaAllowed(call, schema), func() Finding {
 		return Finding{
 			Node:    schema,
 			Path:    path,
 			Message: what + " schema should be moved to components/schemas and referenced",
 		}
 	})
+}
+
+// noInlineSchemaAllowed reports whether an enabled option accepts the inline schema.
+func noInlineSchemaAllowed(call *Call, schema *yaml.Node) bool {
+	if call.Bool(noInlineSchemaAllowPrimitives) && noInlineSchemaSimple(schema) {
+		return true
+	}
+
+	return call.Bool(noInlineSchemaAllowUnions) && noInlineSchemaUnion(schema)
+}
+
+// noInlineSchemaSimple reports whether the schema is a scalar or an array of scalars or references.
+func noInlineSchemaSimple(schema *yaml.Node) bool {
+	if noInlineSchemaPrimitive(schema) {
+		return true
+	}
+
+	types := oas.Types(schema)
+	if len(types) != 1 || types[0] != noInlineSchemaArray {
+		return false
+	}
+
+	items := oas.Get(schema, noInlineSchemaItems)
+
+	return oas.IsMap(items) && (oas.Has(items, "$ref") || noInlineSchemaSimple(items))
+}
+
+// noInlineSchemaUnion reports whether the schema is a oneOf of references and scalars.
+func noInlineSchemaUnion(schema *yaml.Node) bool {
+	members := oas.Get(schema, noInlineSchemaOneOf)
+	if !oas.IsSeq(members) || len(members.Content) == 0 {
+		return false
+	}
+
+	for _, member := range members.Content {
+		if !oas.IsMap(member) || (!oas.Has(member, "$ref") && !noInlineSchemaPrimitive(member)) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // noInlineSchemaPrimitive reports whether the schema is a plain scalar type.

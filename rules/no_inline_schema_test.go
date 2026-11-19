@@ -1,6 +1,7 @@
 package rules_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -126,4 +127,97 @@ paths:
           description: ok
 `), nil, "$.paths['/pets'].get.parameters[0].content['application/json'].schema")
 	})
+
+	t.Run("allowPrimitives accepts arrays of scalars and references", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(noInlineSchemaListsDoc),
+			ruletest.Options{"allowPrimitives": true},
+			noInlineSchemaListPath(0), noInlineSchemaListPath(1), noInlineSchemaListPath(2),
+			noInlineSchemaListPath(5), noInlineSchemaListPath(6))
+	})
+
+	t.Run("allowReferenceUnions accepts oneOf of references and scalars", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(noInlineSchemaListsDoc),
+			ruletest.Options{"allowReferenceUnions": true},
+			noInlineSchemaListPath(2), noInlineSchemaListPath(3), noInlineSchemaListPath(4),
+			noInlineSchemaListPath(5), noInlineSchemaListPath(6))
+	})
+
+	t.Run("reports every inline schema by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(noInlineSchemaListsDoc), nil,
+			noInlineSchemaListPath(0), noInlineSchemaListPath(1), noInlineSchemaListPath(2),
+			noInlineSchemaListPath(3), noInlineSchemaListPath(4), noInlineSchemaListPath(5),
+			noInlineSchemaListPath(6))
+	})
+
+	t.Run("both options still report inline objects", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(noInlineSchemaListsDoc),
+			ruletest.Options{"allowPrimitives": true, "allowReferenceUnions": true},
+			noInlineSchemaListPath(2), noInlineSchemaListPath(5), noInlineSchemaListPath(6))
+	})
 }
+
+func noInlineSchemaListPath(index int) string {
+	return fmt.Sprintf("$.paths['/pets'].get.parameters[%d].schema", index)
+}
+
+const noInlineSchemaListsDoc = `
+paths:
+  /pets:
+    get:
+      parameters:
+        - name: a
+          in: query
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Filter"
+              - type: "null"
+        - name: b
+          in: query
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Filter"
+              - type: string
+        - name: c
+          in: query
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/Filter"
+              - type: object
+        - name: d
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+        - name: e
+          in: query
+          schema:
+            type: array
+            items:
+              $ref: "#/components/schemas/Filter"
+        - name: f
+          in: query
+          schema:
+            type: array
+            items:
+              type: object
+        - name: g
+          in: query
+          schema:
+            type: object
+      responses:
+        "200":
+          description: ok
+components:
+  schemas:
+    Filter:
+      type: string
+`
