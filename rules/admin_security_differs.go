@@ -14,6 +14,12 @@ import (
 const (
 	adminSecurityDiffersOption  = "adminUrl"
 	adminSecurityDiffersDefault = "/admin"
+	// adminSecurityDiffersMatchOption selects how the admin URL is matched.
+	adminSecurityDiffersMatchOption = "adminMatch"
+	// adminSecurityDiffersSegment matches whole path segments only.
+	adminSecurityDiffersSegment = "segment"
+	// adminSecurityDiffersSubstring matches the admin URL anywhere in the route.
+	adminSecurityDiffersSubstring = "substring"
 )
 
 // AdminSecurityDiffers returns the extra-admin-security-differs rule.
@@ -43,6 +49,11 @@ const (
 //
 //   - adminUrl (string, default "/admin"): a route containing this text is
 //     treated as administrative.
+//   - adminMatch (string, default "substring"): how the admin URL is matched.
+//     "substring" treats any route containing the text as administrative.
+//     "segment" does so only when one of the route's path segments equals the
+//     text without its slashes, so /projects/{id}/admins is not administrative
+//     for the admin URL /admin.
 //
 // # Bad
 //
@@ -71,8 +82,9 @@ const (
 // # Known false positives and limitations
 //
 // Only operation-level security is compared; a global security list inherited
-// by an operation is not considered. Matching the admin URL is a plain
-// substring test, so a route such as /administrators is also administrative.
+// by an operation is not considered. By default the admin URL is a plain
+// substring test, so a route such as /administrators is also administrative;
+// set adminMatch to "segment" to match whole path segments only.
 func AdminSecurityDiffers() Rule {
 	return New(Spec{
 		Name:        "admin-security-differs",
@@ -86,6 +98,11 @@ func AdminSecurityDiffers() Rule {
 				Name:        adminSecurityDiffersOption,
 				Description: "Text that marks a route as administrative.",
 				Default:     adminSecurityDiffersDefault,
+			},
+			{
+				Name:        adminSecurityDiffersMatchOption,
+				Description: "How the admin text is matched: substring (anywhere in the route) or segment (equal to a whole path segment).",
+				Default:     adminSecurityDiffersSubstring,
 			},
 		},
 		Check: OnDocument(checkAdminSecurityDiffers),
@@ -107,6 +124,8 @@ func checkAdminSecurityDiffers(call *Call) []Finding {
 		return nil
 	}
 
+	segment := call.String(adminSecurityDiffersMatchOption) == adminSecurityDiffersSegment
+
 	entries := seq.FlatMap(oas.Operations(call.Root), func(operation oas.Operation) []adminSecurityDiffersEntry {
 		return seq.FlatMapPairs(
 			oas.Items(oas.Get(operation.Node, "security")),
@@ -116,7 +135,7 @@ func checkAdminSecurityDiffers(call *Call) []Finding {
 				}
 
 				return []adminSecurityDiffersEntry{{
-					admin: strings.Contains(operation.Route, adminURL),
+					admin: adminSecurityDiffersIsAdmin(operation.Route, adminURL, segment),
 					route: operation.Route,
 					hash:  adminSecurityDiffersHash(requirement),
 					path:  oas.Index(oas.Join(operation.Path, "security"), i),
@@ -149,4 +168,15 @@ func adminSecurityDiffersHash(requirement *yaml.Node) string {
 	})
 
 	return strings.Join(slices.Sorted(slices.Values(parts)), ";")
+}
+
+// adminSecurityDiffersIsAdmin reports whether a route is administrative.
+func adminSecurityDiffersIsAdmin(route, adminURL string, segment bool) bool {
+	if !segment {
+		return strings.Contains(route, adminURL)
+	}
+
+	want := strings.Trim(adminURL, "/")
+
+	return slices.Contains(strings.Split(route, "/"), want)
 }

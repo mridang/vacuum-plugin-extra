@@ -70,6 +70,7 @@ rules:
     then:
       function: extra-admin-security-differs
       functionOptions:
+        adminMatch: substring
         adminUrl: /admin
   extra-allof-schema-type-intersection:
     description: A schema and its immediate allOf branches must declare types with a non-empty intersection.
