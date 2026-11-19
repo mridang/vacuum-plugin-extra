@@ -36,8 +36,11 @@ import (
 // # Options
 //
 //   - allowReferenceUnions (bool, default false): do not report a oneOf, anyOf
-//     or allOf whose members are all $refs (or a plain null type). Such a union
-//     defines no object itself, so it is often acceptable inline.
+//     or allOf whose members are all open: a $ref, a null type, an enum, a
+//     scalar type (string, number, integer or boolean) or a free-form object.
+//     Such a union defines no object with properties itself, so it is often
+//     acceptable inline. A member with properties or its own composition is
+//     still an inline object and keeps the union reported.
 //
 // # Bad
 //
@@ -88,7 +91,7 @@ func AvoidInlineObjectSchemas() Rule {
 		Type:        TypeStyle,
 		Options: []Option{{
 			Name:        "allowReferenceUnions",
-			Description: "Do not report compositions whose members are all $refs or a null type.",
+			Description: "Accept compositions whose members are all refs, nulls, enums, scalars or free-form objects.",
 			Default:     false,
 		}},
 		Check: PerSchema(checkAvoidInlineObjectSchemas),
@@ -129,22 +132,67 @@ func avoidInlineObjectSchemasIsInlineObject(schema *yaml.Node, allowUnions bool)
 }
 
 // avoidInlineObjectSchemasHasInlineMember reports whether a composition list
-// holds a member that is neither a $ref nor a plain null type. A union of
-// references, such as oneOf of $refs or a $ref or null, defines no object itself.
+// holds a member that is not open. A union whose members are all open defines
+// no object with properties itself.
 func avoidInlineObjectSchemasHasInlineMember(list *yaml.Node) bool {
 	if list == nil {
 		return false
 	}
 
 	return slices.ContainsFunc(list.Content, func(member *yaml.Node) bool {
-		isNull := len(oas.Keys(member)) == 1 && oas.StringAt(member, "type") == "null"
-
-		return oas.Ref(member) == "" && !isNull
+		return !avoidInlineObjectSchemasIsOpenMember(member)
 	})
+}
+
+// avoidInlineObjectSchemasIsOpenMember reports whether a union member defines no
+// object with properties of its own: a $ref, a plain null type, an enum, a scalar
+// type or a free-form object. A member with properties or a composition is not open.
+func avoidInlineObjectSchemasIsOpenMember(member *yaml.Node) bool {
+	isNull := len(oas.Keys(member)) == 1 && oas.StringAt(member, "type") == "null"
+
+	if oas.Ref(member) != "" || isNull || !oas.Empty(oas.Get(member, "enum")) {
+		return true
+	}
+
+	if avoidInlineObjectSchemasHasStructure(member) {
+		return false
+	}
+
+	return avoidInlineObjectSchemasHasScalarOrFreeFormType(member)
+}
+
+// avoidInlineObjectSchemasHasStructure reports whether a schema defines
+// properties or composes other schemas.
+func avoidInlineObjectSchemasHasStructure(schema *yaml.Node) bool {
+	if !oas.Empty(oas.Get(schema, "properties")) {
+		return true
+	}
+
+	for _, keyword := range []string{avoidInlineObjectSchemasAllOf, avoidInlineObjectSchemasAnyOf, literalOneof} {
+		if !oas.Empty(oas.Get(schema, keyword)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// avoidInlineObjectSchemasHasScalarOrFreeFormType reports whether a schema
+// declares a scalar type or the object type. Callers check the structure first,
+// so an object here has no properties and is a free-form object.
+func avoidInlineObjectSchemasHasScalarOrFreeFormType(schema *yaml.Node) bool {
+	for _, typeName := range []string{"string", "number", "integer", avoidInlineObjectSchemasBoolean, "object"} {
+		if oas.HasType(schema, typeName) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Keyword names used by this rule.
 const (
-	avoidInlineObjectSchemasAllOf = "allOf"
-	avoidInlineObjectSchemasAnyOf = "anyOf"
+	avoidInlineObjectSchemasAllOf   = "allOf"
+	avoidInlineObjectSchemasAnyOf   = "anyOf"
+	avoidInlineObjectSchemasBoolean = "boolean"
 )
