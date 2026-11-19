@@ -18,15 +18,16 @@ const requestBodyRequiredListJSON = "application/json"
 //
 // # What it checks
 //
-// For every operation, the schema of the JSON request body must list its
-// mandatory properties. A schema that declares properties but has no required
-// list, or an empty one, is reported. The schema is read from the media types
-// named by the mediaTypes option, and a $ref schema is followed to its target.
-// A property marked readOnly is never sent in a request, so it is neither
-// counted as a property nor accepted as a required entry: a schema whose only
-// properties are readOnly is not reported, and a required list that names only
-// readOnly properties does not satisfy the rule. The marker is read through $ref
-// and allOf.
+// For every operation, the schema of the JSON request body must state which of
+// its properties are mandatory. A schema that declares properties but has no
+// required key is reported. An explicit empty required list (required: []) is
+// accepted, because it states that every property is optional. A property marked
+// readOnly is never sent in a request, so it is neither counted as a property nor
+// accepted as a required entry: a schema whose only properties are readOnly is not
+// reported, and a required list that names only readOnly properties does not
+// satisfy the rule. The schema is read from the media types named by the
+// mediaTypes option, and a $ref schema is followed to its target. The readOnly
+// marker is read through $ref and allOf.
 //
 // # Why
 //
@@ -73,12 +74,13 @@ const requestBodyRequiredListJSON = "application/json"
 // # Known false positives / limitations
 //
 // Request bodies in which every property is genuinely optional, such as PATCH
-// payloads, are reported. Only the top-level schema is examined; properties
-// introduced through allOf are not counted.
+// payloads, are reported unless the schema declares required: [] explicitly.
+// Only the top-level schema is examined; properties introduced through allOf
+// are not counted.
 func RequestBodyRequiredList() Rule {
 	return New(Spec{
 		Name:        "request-body-required-list",
-		Description: "A JSON request body schema with properties must list its required properties.",
+		Description: "A JSON request body schema with properties must state its required properties, an empty list included.",
 		HowToFix:    "Add a required list with the mandatory properties to the request body schema.",
 		Severity:    model.SeverityInfo,
 		Given:       "$",
@@ -93,7 +95,8 @@ func RequestBodyRequiredList() Rule {
 }
 
 // requestBodyRequiredListMissing reports whether the schema has a property a client can send
-// but no required list that names a property the client must send.
+// but no required list that names a property the client must send. An explicit empty
+// required list is accepted.
 func requestBodyRequiredListMissing(root, schema *yaml.Node) bool {
 	properties := oas.Get(schema, "properties")
 	readOnly := func(name string) bool {
@@ -102,9 +105,11 @@ func requestBodyRequiredListMissing(root, schema *yaml.Node) bool {
 	writable := slices.ContainsFunc(oas.Keys(properties), func(name string) bool {
 		return !readOnly(name)
 	})
-	demanded := slices.DeleteFunc(oas.Strings(oas.Get(schema, "required")), readOnly)
+	named := oas.Strings(oas.Get(schema, "required"))
+	demanded := slices.DeleteFunc(slices.Clone(named), readOnly)
+	explicitEmpty := oas.Has(schema, "required") && len(named) == 0
 
-	return writable && len(demanded) == 0
+	return writable && len(demanded) == 0 && !explicitEmpty
 }
 
 func checkRequestBodyRequiredList(call *Call, operation oas.Operation) []Finding {
