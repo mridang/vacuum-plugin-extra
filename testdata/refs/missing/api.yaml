@@ -20,4 +20,4 @@ paths:
           content:
             application/json:
               schema:
-                $ref: releases/build/build-release-request.yaml
+                $ref: releases/bundles/build-release-request.yaml
