@@ -87,8 +87,10 @@ const (
 //
 // Only schemas reachable from a response are examined, but the finding points
 // at the property where it is declared, which may be in components.schemas and
-// shared with request bodies. Properties declared read-only or write-only are
-// not treated specially.
+// shared with request bodies. A property marked writeOnly is never returned in
+// a response, so it is not required and is not reported. A readOnly property is
+// returned, so it is reported like any other. The marker is read through $ref
+// and allOf.
 func ResponseRequiredProperties() Rule {
 	return New(Spec{
 		Name:        "response-required-properties",
@@ -448,6 +450,9 @@ func (w responseRequiredPropertiesWalker) properties(
 			path := oas.Join(base, property.key.Value)
 			target, _ := w.follow(property.value, path)
 			kind := w.kind(target)
+			if oas.Marked(w.root, property.value, "writeOnly") {
+				kind = ""
+			}
 
 			if kind == "" || slices.Contains(required, property.key.Value) || inner.reported.has(path) {
 				return w.schema(inner, property.value, path, nil)

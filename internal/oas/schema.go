@@ -371,3 +371,89 @@ func MediaTypes(content *yaml.Node, path string) []MediaType {
 		return []MediaType{{Name: key.Value, Node: value, Path: Join(path, key.Value)}}
 	})
 }
+
+// markedDepth bounds how many allOf levels Marked descends into.
+const markedDepth = 32
+
+// Marked reports whether the schema sets the boolean keyword to true. The
+// keyword counts on the schema itself, on the target of a local $ref and on
+// any allOf member, recursively, because readOnly and writeOnly apply through
+// composition.
+func Marked(root, node *yaml.Node, keyword string) bool {
+	return marked(root, node, keyword, 0)
+}
+
+// marked is Marked with the allOf depth it has descended.
+func marked(root, node *yaml.Node, keyword string, depth int) bool {
+	schema := Resolve(root, node)
+	if depth > markedDepth || !IsMap(schema) {
+		return false
+	}
+
+	if IsTrue(Get(schema, keyword)) {
+		return true
+	}
+
+	for _, member := range Items(Get(schema, "allOf")) {
+		if marked(root, member, keyword, depth+1) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Without returns a copy of the schema in which every property that drop
+// reports is removed, together with its name in the required list. The
+// schema itself is returned unchanged when no property is dropped.
+func Without(schema *yaml.Node, drop func(property *yaml.Node) bool) *yaml.Node {
+	dropped := seq.FlatMapPairs(Pairs(Get(schema, "properties")), func(key, value *yaml.Node) []string {
+		if drop(value) {
+			return []string{key.Value}
+		}
+
+		return nil
+	})
+	if len(dropped) == 0 {
+		return schema
+	}
+
+	content := seq.FlatMapPairs(Pairs(schema), func(key, value *yaml.Node) []*yaml.Node {
+		switch key.Value {
+		case "properties":
+			value = withoutEntries(value, dropped)
+		case "required":
+			value = withoutItems(value, dropped)
+		}
+
+		return []*yaml.Node{key, value}
+	})
+
+	return &yaml.Node{Kind: yaml.MappingNode, Content: content}
+}
+
+// withoutEntries returns a copy of the mapping without the keys named.
+func withoutEntries(mapping *yaml.Node, names []string) *yaml.Node {
+	content := seq.FlatMapPairs(Pairs(mapping), func(key, value *yaml.Node) []*yaml.Node {
+		if slices.Contains(names, key.Value) {
+			return nil
+		}
+
+		return []*yaml.Node{key, value}
+	})
+
+	return &yaml.Node{Kind: yaml.MappingNode, Content: content}
+}
+
+// withoutItems returns a copy of the sequence without the scalars named.
+func withoutItems(list *yaml.Node, names []string) *yaml.Node {
+	content := seq.FlatMapPairs(Items(list), func(_ int, item *yaml.Node) []*yaml.Node {
+		if slices.Contains(names, item.Value) {
+			return nil
+		}
+
+		return []*yaml.Node{item}
+	})
+
+	return &yaml.Node{Kind: yaml.SequenceNode, Content: content}
+}

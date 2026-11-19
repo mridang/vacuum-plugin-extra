@@ -300,4 +300,74 @@ paths:
                 $ref: "#/components/schemas/ThingSummary"
 `+resourceResponseConsistencySchemas), nil)
 	})
+
+	t.Run("ignores writeOnly properties on both sides", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name]
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  secret: {type: string, writeOnly: true}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name, token]
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  token: {type: string, writeOnly: true}
+`), nil)
+	})
+
+	t.Run("still reports an unmarked difference beside writeOnly properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  secret: {type: string, writeOnly: true}
+                  nickname: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+`), nil, "$.paths['/things'].post.responses['201'].content['application/json']")
+	})
 }

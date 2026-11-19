@@ -151,4 +151,53 @@ components:
           items: {type: string}
 `), nil)
 	})
+
+	t.Run("does not require a writeOnly array property", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name]
+                properties:
+                  name: {type: string}
+                  secrets: {type: array, writeOnly: true, items: {type: string}}
+                  tokens: {$ref: "#/components/schemas/Tokens"}
+components:
+  schemas:
+    Tokens:
+      type: array
+      writeOnly: true
+      items: {type: string}
+`), nil)
+	})
+
+	t.Run("still requires a readOnly array property", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name]
+                properties:
+                  name: {type: string}
+                  ids: {type: array, readOnly: true, items: {type: string}}
+`), nil, "$.paths['/things'].get.responses['200'].content['application/json'].schema.properties.ids")
+	})
 }

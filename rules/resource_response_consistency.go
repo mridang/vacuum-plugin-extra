@@ -43,8 +43,11 @@ const (
 //
 // Every JSON media type of the 200 and 201 responses of the examined operation
 // that defines a schema must have a schema deeply equal to the canonical one
-// after $ref resolution (key order is irrelevant, array order is not). The
-// finding is reported on the media type object, for example
+// after $ref resolution (key order is irrelevant, array order is not). A
+// property marked writeOnly is left out of both sides of the comparison, with
+// its name in any required list, because a response never carries it. The
+// marker is read through $ref and allOf. The finding is reported on the media
+// type object, for example
 // paths['/things'].post.responses['201'].content['application/json'].
 //
 // A PUT on a path whose GET returns a $ref schema named *Collection is a bulk
@@ -342,8 +345,11 @@ func resourceResponseConsistencyCanon(root, node *yaml.Node, depth int, ancestor
 
 	switch {
 	case oas.IsMap(resolved):
-		parts := seq.Map(slices.Values(slices.Sorted(slices.Values(oas.Keys(resolved)))), func(key string) string {
-			return key + ":" + resourceResponseConsistencyCanon(root, oas.Get(resolved, key), depth+1, path)
+		shared := oas.Without(resolved, func(property *yaml.Node) bool {
+			return oas.Marked(root, property, "writeOnly")
+		})
+		parts := seq.Map(slices.Values(slices.Sorted(slices.Values(oas.Keys(shared)))), func(key string) string {
+			return key + ":" + resourceResponseConsistencyCanon(root, oas.Get(shared, key), depth+1, path)
 		})
 
 		return "{" + strings.Join(parts, ",") + "}"

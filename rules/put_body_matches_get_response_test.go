@@ -153,4 +153,82 @@ paths:
 		ruletest.RequirePaths(t, rule, doc, nil, "$.paths['/pets'].put.requestBody.content['application/json'].schema")
 		ruletest.RequireClean(t, rule, doc, ruletest.Options{"responseCode": "206"})
 	})
+
+	t.Run("ignores readOnly and writeOnly properties on either side", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewPet"
+      responses:
+        "200":
+          description: ok
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name: {type: string}
+        id: {type: integer, readOnly: true}
+        created: {$ref: "#/components/schemas/Stamp"}
+        token:
+          allOf:
+            - $ref: "#/components/schemas/Stamp"
+    NewPet:
+      type: object
+      properties:
+        name: {type: string}
+        password: {type: string, writeOnly: true}
+    Stamp:
+      type: string
+      readOnly: true
+`), nil)
+	})
+
+	t.Run("still reports an unmarked difference beside marked properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: {type: string}
+                  id: {type: integer, readOnly: true}
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                password: {type: string, writeOnly: true}
+                nickname: {type: string}
+      responses:
+        "200":
+          description: ok
+`), nil, "$.paths['/pets/{id}'].put.requestBody.content['application/json'].schema")
+	})
 }
