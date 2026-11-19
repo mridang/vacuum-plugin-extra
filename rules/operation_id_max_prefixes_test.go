@@ -49,4 +49,40 @@ func TestOperationIDMaxPrefixes(t *testing.T) {
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc), ruletest.Options{"max": 4}, "$")
 	})
+
+	t.Run("reads the prefix in the configured casing", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc),
+			ruletest.Options{"casing": "snake_case", "max": 0})
+
+		require.Len(t, results, 1)
+		require.Contains(t, results[0].Message, "found 1 distinct operationId prefixes (remove)")
+	})
+
+	t.Run("reads each identifier in the first casing that captures a prefix", func(t *testing.T) {
+		t.Parallel()
+
+		results := ruletest.Run(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc),
+			ruletest.Options{"casing": []string{"camelCase", "snake_case"}, "max": 5})
+
+		require.Len(t, results, 1)
+		require.Contains(t, results[0].Message, "create, fetch, get, list, remove, update")
+	})
+
+	t.Run("collects nothing for lowercase or an empty list", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc),
+			ruletest.Options{"casing": "lowercase", "max": 0})
+		ruletest.RequireClean(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc),
+			ruletest.Options{"casing": []string{}, "max": 0})
+	})
+
+	t.Run("reports an unknown casing", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(operationIDMaxPrefixesDoc),
+			ruletest.Options{"casing": "bogus"}, "$")
+	})
 }

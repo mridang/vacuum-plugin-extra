@@ -8,6 +8,7 @@ import (
 
 	"github.com/daveshanley/vacuum/model"
 
+	"github.com/mridang/vacuum-plugin-extra/internal/casing"
 	"github.com/mridang/vacuum-plugin-extra/internal/oas"
 	"github.com/mridang/vacuum-plugin-extra/internal/seq"
 )
@@ -17,15 +18,27 @@ const (
 	operationIDMaxPrefixesDefault   = 5
 )
 
-// operationIDMaxPrefixesPattern matches the lowercase prefix of a camelCase id.
-const operationIDMaxPrefixesPattern = `^([a-z]+)[A-Z]`
+// operationIDMaxPrefixesPatterns maps each convention to the expression that
+// captures the first word of an identifier written in it. The lowercase
+// convention has no word boundary and so no prefix.
+func operationIDMaxPrefixesPatterns() map[casing.Casing]*regexp.Regexp {
+	return map[casing.Casing]*regexp.Regexp{
+		casing.Camel:          regexp.MustCompile(`^([a-z]+)[A-Z]`),
+		casing.Pascal:         regexp.MustCompile(`^([A-Z][a-z]+)[A-Z]`),
+		casing.Snake:          regexp.MustCompile(`^([a-z]+)_`),
+		casing.Kebab:          regexp.MustCompile(`^([a-z]+)-`),
+		casing.Dot:            regexp.MustCompile(`^([a-z]+)\.`),
+		casing.ScreamingSnake: regexp.MustCompile(`^([A-Z]+)_`),
+		casing.ScreamingKebab: regexp.MustCompile(`^([A-Z]+)-`),
+	}
+}
 
 // OperationIDMaxPrefixes returns the extra-operation-id-max-prefixes rule.
 //
 // # What it checks
 //
-// The lowercase prefix before the first uppercase letter of every operationId
-// (getPet gives get, listPets gives list) is collected across the whole
+// The first word of every operationId in the configured casing, camelCase by
+// default (getPet gives get, listPets gives list), is collected across the whole
 // document. When more distinct prefixes are used than the allowed maximum, one
 // finding is reported on the document root, listing the prefixes. operationIds
 // without an uppercase letter after a lowercase prefix, such as list_pets, are
@@ -43,6 +56,13 @@ const operationIDMaxPrefixesPattern = `^([a-z]+)[A-Z]`
 //
 // # Options
 //
+//   - casing (string or list, default "camelCase"): kebab-case, snake_case,
+//     camelCase, PascalCase, SCREAMING_SNAKE_CASE, SCREAMING-KEBAB-CASE, dot.case
+//     or lowercase. It decides where the first word of an identifier ends, so
+//     get_pet gives get under snake_case. An identifier is read in the first
+//     listed convention that captures a prefix from it, an empty list collects
+//     nothing and an unknown value is reported. lowercase has no word boundary
+//     and so no prefix.
 //   - max (integer, default 5): the largest number of distinct prefixes allowed.
 //
 // # Bad
@@ -73,27 +93,51 @@ func OperationIDMaxPrefixes() Rule {
 		Severity:    model.SeverityInfo,
 		Given:       "$",
 		Type:        TypeStyle,
-		Options: []Option{{
-			Name:        operationIDMaxPrefixesMaxOption,
-			Description: "Largest number of distinct operationId prefixes.",
-			Default:     operationIDMaxPrefixesDefault,
-		}},
-		Check: OnDocument(checkOperationIDMaxPrefixes),
+		Options: []Option{
+			casingOption("Convention of the operationId", casing.Camel),
+			{
+				Name:        operationIDMaxPrefixesMaxOption,
+				Description: "Largest number of distinct operationId prefixes.",
+				Default:     operationIDMaxPrefixesDefault,
+			},
+		},
+		Check: WithCasing(checkOperationIDMaxPrefixes),
 	})
 }
 
+// operationIDMaxPrefixesPrefix returns the first word of the identifier as the
+// first convention of the set that captures one reads it, or the empty string.
+func operationIDMaxPrefixesPrefix(
+	patterns map[casing.Casing]*regexp.Regexp,
+	allowed casing.Set,
+	id string,
+) string {
+	for _, convention := range allowed {
+		pattern, ok := patterns[convention]
+		if !ok {
+			continue
+		}
+
+		if match := pattern.FindStringSubmatch(id); match != nil {
+			return match[1]
+		}
+	}
+
+	return ""
+}
+
 // checkOperationIDMaxPrefixes compares the number of prefixes with the maximum.
-func checkOperationIDMaxPrefixes(call *Call) []Finding {
-	pattern := regexp.MustCompile(operationIDMaxPrefixesPattern)
+func checkOperationIDMaxPrefixes(call *Call, allowed casing.Set) []Finding {
+	patterns := operationIDMaxPrefixesPatterns()
 
 	prefixes := slices.Compact(slices.Sorted(slices.Values(
 		seq.FlatMap(oas.Operations(call.Root), func(operation oas.Operation) []string {
-			match := pattern.FindStringSubmatch(oas.StringAt(operation.Node, "operationId"))
-			if match == nil {
+			prefix := operationIDMaxPrefixesPrefix(patterns, allowed, oas.StringAt(operation.Node, "operationId"))
+			if prefix == "" {
 				return nil
 			}
 
-			return []string{match[1]}
+			return []string{prefix}
 		}),
 	)))
 
