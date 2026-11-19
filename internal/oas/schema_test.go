@@ -86,6 +86,16 @@ func TestWithout(t *testing.T) {
 		require.Equal(t, []string{"id", "name"}, oas.Keys(oas.Get(object, "properties")))
 	})
 
+	t.Run("drops a required list that dropping its names leaves empty", func(t *testing.T) {
+		t.Parallel()
+
+		trimmed := oas.Without(object, func(*yaml.Node) bool { return true })
+
+		require.Empty(t, oas.Keys(oas.Get(trimmed, "properties")))
+		require.False(t, oas.Has(trimmed, "required"))
+		require.Equal(t, []string{"id", "name"}, oas.Strings(oas.Get(object, "required")))
+	})
+
 	t.Run("returns the schema itself when nothing is dropped", func(t *testing.T) {
 		t.Parallel()
 

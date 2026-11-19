@@ -337,6 +337,39 @@ paths:
 `), nil)
 	})
 
+	t.Run("accepts an allOf member whose required list is emptied by writeOnly properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    required: [secret]
+                    properties:
+                      id: {type: string}
+                      secret: {type: string, writeOnly: true}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+`), nil)
+	})
+
 	t.Run("still reports an unmarked difference beside writeOnly properties", func(t *testing.T) {
 		t.Parallel()
 

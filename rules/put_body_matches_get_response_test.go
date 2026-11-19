@@ -231,4 +231,99 @@ paths:
           description: ok
 `), nil, "$.paths['/pets/{id}'].put.requestBody.content['application/json'].schema")
 	})
+
+	t.Run("treats a required list emptied by marked properties as missing, both ways", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: {type: string}
+                  set_at: {type: string, readOnly: true}
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                name: {type: string}
+                password: {type: string, writeOnly: true}
+      responses:
+        "200":
+          description: ok
+`), nil)
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [set_at]
+                properties:
+                  name: {type: string}
+                  set_at: {type: string, readOnly: true}
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+                password: {type: string, writeOnly: true}
+      responses:
+        "200":
+          description: ok
+`), nil)
+	})
+
+	t.Run("still reports a required name that differs beside an emptied list", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /pets/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [name]
+                properties:
+                  name: {type: string}
+                  password: {type: string, writeOnly: true}
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                name: {type: string}
+                password: {type: string, writeOnly: true}
+      responses:
+        "200":
+          description: ok
+`), nil, "$.paths['/pets/{id}'].put.requestBody.content['application/json'].schema")
+	})
 }
