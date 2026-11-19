@@ -91,7 +91,7 @@ func AvoidInlineObjectSchemas() Rule {
 		Type:        TypeStyle,
 		Options: []Option{{
 			Name:        "allowReferenceUnions",
-			Description: "Do not report compositions whose members are all $refs, null types, enums, scalars or free-form objects.",
+			Description: "Accept compositions whose members are all refs, nulls, enums, scalars or free-form objects.",
 			Default:     false,
 		}},
 		Check: PerSchema(checkAvoidInlineObjectSchemas),
@@ -181,7 +181,7 @@ func avoidInlineObjectSchemasHasStructure(schema *yaml.Node) bool {
 // declares a scalar type or the object type. Callers check the structure first,
 // so an object here has no properties and is a free-form object.
 func avoidInlineObjectSchemasHasScalarOrFreeFormType(schema *yaml.Node) bool {
-	for _, typeName := range []string{"string", "number", "integer", "boolean", "object"} {
+	for _, typeName := range []string{"string", "number", "integer", avoidInlineObjectSchemasBoolean, "object"} {
 		if oas.HasType(schema, typeName) {
 			return true
 		}
@@ -192,6 +192,7 @@ func avoidInlineObjectSchemasHasScalarOrFreeFormType(schema *yaml.Node) bool {
 
 // Keyword names used by this rule.
 const (
-	avoidInlineObjectSchemasAllOf = "allOf"
-	avoidInlineObjectSchemasAnyOf = "anyOf"
+	avoidInlineObjectSchemasAllOf   = "allOf"
+	avoidInlineObjectSchemasAnyOf   = "anyOf"
+	avoidInlineObjectSchemasBoolean = "boolean"
 )
