@@ -18,6 +18,7 @@ import (
 const (
 	apiSymmetryGetVsWriteSchemasMaxDepth = 24
 	apiSymmetryGetVsWriteSchemasSchemas  = "#/components/schemas/"
+	apiSymmetryGetVsWriteSchemasSummary  = "summary"
 	apiSymmetryGetVsWriteSchemasRefSufix = "reference"
 	apiSymmetryGetVsWriteSchemasPrototyp = "prototype"
 	apiSymmetryGetVsWriteSchemasOKCode   = "200"
@@ -208,7 +209,7 @@ func checkAPISymmetryGetVsWriteSchemas(call *Call, allowed casing.Set) []Finding
 			canonical := oas.Get(schemas, name)
 
 			return seq.FlatMapSlice(
-				[]string{"summary", apiSymmetryGetVsWriteSchemasPrototyp, "patch"},
+				[]string{apiSymmetryGetVsWriteSchemasSummary, apiSymmetryGetVsWriteSchemasPrototyp, "patch"},
 				func(word string) []Finding {
 					variant := allowed.Append(name, word)
 					node := oas.Get(schemas, variant)

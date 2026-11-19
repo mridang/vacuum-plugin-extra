@@ -138,6 +138,8 @@ func (c Casing) Suffixes(word string) []string {
 		return []string{"." + strings.ToLower(word)}
 	case Camel, Pascal:
 		return []string{camelWord(word, true, false), strings.ToUpper(word)}
+	case Lower:
+		return []string{strings.ToLower(word)}
 	default:
 		return []string{strings.ToLower(word)}
 	}

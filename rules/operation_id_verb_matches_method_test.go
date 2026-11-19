@@ -281,6 +281,11 @@ paths:
       responses:
         "200":
           description: ok
+  /bands/{id}:
+    head:
+      responses:
+        "200":
+          description: ok
 `), nil, "$.paths['/bands'].get.operationId")
 	})
 
@@ -300,11 +305,16 @@ paths:
       responses:
         "200":
           description: ok
+  /bands/{id}:
+    head:
+      responses:
+        "200":
+          description: ok
 `)
 
 		ruletest.RequireClean(t, rule, doc, ruletest.Options{"casing": []string{"snake_case", "camelCase"}})
-		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "camelCase", "strict": false},
-			"$.paths['/bands'].get.operationId")
+		ruletest.RequirePaths(t, rule, doc, ruletest.Options{"casing": "PascalCase", "strict": false},
+			"$.paths['/bands'].get.operationId", "$.paths['/bands'].post.operationId")
 	})
 
 	t.Run("reports an empty casing list as disabled and an unknown value", func(t *testing.T) {

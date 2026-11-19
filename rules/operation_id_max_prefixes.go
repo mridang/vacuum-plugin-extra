@@ -30,6 +30,7 @@ func operationIDMaxPrefixesPatterns() map[casing.Casing]*regexp.Regexp {
 		casing.Dot:            regexp.MustCompile(`^([a-z]+)\.`),
 		casing.ScreamingSnake: regexp.MustCompile(`^([A-Z]+)_`),
 		casing.ScreamingKebab: regexp.MustCompile(`^([A-Z]+)-`),
+		casing.Lower:          nil,
 	}
 }
 
@@ -114,7 +115,7 @@ func operationIDMaxPrefixesPrefix(
 ) string {
 	for _, convention := range allowed {
 		pattern, ok := patterns[convention]
-		if !ok {
+		if !ok || pattern == nil {
 			continue
 		}
 
