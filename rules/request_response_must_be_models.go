@@ -22,6 +22,8 @@ const (
 	requestResponseMustBeModelsJSONPatch = "application/json-patch+json"
 	requestResponseMustBeModelsMergeJSON = "application/merge-patch+json"
 	requestResponseMustBeModelsObject    = "object"
+
+	requestResponseMustBeModelsAllowDictionaries = "allowDictionaries"
 )
 
 // RequestResponseMustBeModels returns the extra-request-response-must-be-models
@@ -48,7 +50,8 @@ const (
 // Schemas that are not object schemas (arrays, primitives) are deliberately not
 // reported by this rule, exactly like the original: other rules of the family
 // cover them. A body that is a dictionary (additionalProperties only) is an
-// object schema without properties and is reported.
+// object schema without properties and is reported, unless the allowDictionaries
+// option accepts it.
 //
 // # Why
 //
@@ -64,7 +67,11 @@ const (
 //
 // # Options
 //
-// None.
+//   - allowDictionaries (bool, default false): accept an object schema without
+//     properties whose additionalProperties is a schema with a value type (a
+//     type, a $ref or a composition keyword). The body is then a dictionary keyed
+//     by name with a defined value type, which SDK generators map to a map type.
+//     additionalProperties true or an empty schema still reports.
 //
 // # Bad
 //
@@ -112,18 +119,27 @@ func RequestResponseMustBeModels() Rule {
 		Severity:    model.SeverityError,
 		Given:       "$",
 		Type:        TypeStyle,
-		Check:       PerOperation(checkRequestResponseMustBeModels),
+		Options: []Option{
+			{
+				Name:        requestResponseMustBeModelsAllowDictionaries,
+				Description: "Accept a property-less object schema whose additionalProperties has a value type.",
+				Default:     false,
+			},
+		},
+		Check: PerOperation(checkRequestResponseMustBeModels),
 	})
 }
 
 // checkRequestResponseMustBeModels inspects the request and response bodies of
 // one operation.
 func checkRequestResponseMustBeModels(call *Call, operation oas.Operation) []Finding {
+	allow := call.Bool(requestResponseMustBeModelsAllowDictionaries)
 	body := oas.Resolve(call.Root, oas.Get(operation.Node, "requestBody"))
 	request := requestResponseMustBeModelsContent(
 		call.Root,
 		oas.Get(body, "content"),
 		oas.JoinAll(operation.Path, "requestBody", "content"),
+		allow,
 	)
 
 	return slices.Concat(
@@ -131,18 +147,19 @@ func checkRequestResponseMustBeModels(call *Call, operation oas.Operation) []Fin
 		seq.FlatMapSlice(oas.Responses(call.Root, operation), func(response oas.Response) []Finding {
 			content := oas.Get(response.Node, "content")
 
-			return requestResponseMustBeModelsContent(call.Root, content, oas.Join(response.Path, "content"))
+			return requestResponseMustBeModelsContent(call.Root, content, oas.Join(response.Path, "content"), allow)
 		}),
 	)
 }
 
 // requestResponseMustBeModelsContent checks the media types of one content map.
-func requestResponseMustBeModelsContent(root, content *yaml.Node, path string) []Finding {
+func requestResponseMustBeModelsContent(root, content *yaml.Node, path string, allowDictionaries bool) []Finding {
 	return seq.FlatMapSlice(oas.MediaTypes(content, path), func(media oas.MediaType) []Finding {
 		schema := oas.Get(media.Node, "schema")
 		violation := requestResponseMustBeModelsIsJSON(media.Name) && oas.IsMap(schema) &&
 			requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsIsObject, 0) &&
-			!requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsDefinesProps, 0)
+			!requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsDefinesProps, 0) &&
+			!(allowDictionaries && requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsIsTypedDictionary, 0))
 
 		return When(violation, func() Finding {
 			return Finding{
@@ -176,6 +193,17 @@ func requestResponseMustBeModelsIsObject(schema *yaml.Node) bool {
 		oas.IsMap(oas.Get(schema, "patternProperties")) ||
 		oas.IsMap(additional) ||
 		oas.IsTrue(additional))
+}
+
+// requestResponseMustBeModelsIsTypedDictionary reports whether a simple schema
+// has an additionalProperties schema that declares a value type.
+func requestResponseMustBeModelsIsTypedDictionary(schema *yaml.Node) bool {
+	additional := oas.Get(schema, "additionalProperties")
+	valueTypeKeys := []string{"type", "$ref", requestResponseMustBeModelsAllOf, requestResponseMustBeModelsAnyOf, "oneOf"}
+
+	return oas.IsMap(additional) && slices.ContainsFunc(valueTypeKeys, func(key string) bool {
+		return oas.Has(additional, key)
+	})
 }
 
 // requestResponseMustBeModelsDefinesProps reports whether a simple schema has properties.

@@ -1559,7 +1559,8 @@ rules:
     type: style
     then:
       function: extra-request-response-must-be-models
-      functionOptions: {}
+      functionOptions:
+        allowDictionaries: false
   extra-required-parameters-before-optional:
     description: Required parameters must be listed before optional parameters.
     message: "{{error}}"
