@@ -32,6 +32,32 @@ components:
 `)
 }
 
+// openModelsDoc returns schemas that declare properties beside additionalProperties: an open model that accepts
+// extra fields, a typed model, and a dictionary whose value is an open model.
+func openModelsDoc() string {
+	return ruletest.Doc31(`
+components:
+  schemas:
+    Open:
+      type: object
+      properties:
+        name: {type: string}
+      additionalProperties: true
+    Typed:
+      type: object
+      properties:
+        name: {type: string}
+      additionalProperties: {type: string}
+    Nested:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          name: {type: string}
+        additionalProperties: true
+`)
+}
+
 func TestWellDefinedDictionaries(t *testing.T) {
 	t.Parallel()
 
@@ -215,6 +241,38 @@ components:
         - type: object
           maxProperties: 0
 `), ruletest.Options{"allowEmptyObjects": true})
+	})
+
+	t.Run("keeps reporting extensible models by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, openModelsDoc(), nil,
+			"$.components.schemas.Open",
+			"$.components.schemas.Open",
+			"$.components.schemas.Typed",
+			"$.components.schemas.Nested")
+	})
+
+	t.Run("accepts extensible models when allowOpenModels is set", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, openModelsDoc(), ruletest.Options{"allowOpenModels": true},
+			"$.components.schemas.Typed")
+	})
+
+	t.Run("still reports a model that is also a typed dictionary when allowOpenModels is set", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Typed:
+      type: object
+      properties:
+        name: {type: string}
+      additionalProperties:
+        type: string
+`), ruletest.Options{"allowOpenModels": true}, "$.components.schemas.Typed")
 	})
 
 	t.Run("follows composition like IBM", func(t *testing.T) {
