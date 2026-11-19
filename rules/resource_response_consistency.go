@@ -43,8 +43,11 @@ const (
 //
 // Every JSON media type of the 200 and 201 responses of the examined operation
 // that defines a schema must have a schema deeply equal to the canonical one
-// after $ref resolution (key order is irrelevant, array order is not). The
-// finding is reported on the media type object, for example
+// after $ref resolution (key order is irrelevant, array order is not). A
+// property marked writeOnly is left out of both sides of the comparison, with
+// its name in any required list, because a response never carries it. The
+// marker is read through $ref and allOf. The finding is reported on the media
+// type object, for example
 // paths['/things'].post.responses['201'].content['application/json'].
 //
 // A create or update response may extend the GET schema instead of repeating
@@ -58,7 +61,8 @@ const (
 //     schema, for example {session: <GET schema>, session_token: string};
 //   - an object whose property names are a superset of the GET properties,
 //     where each shared property has the same type name (its $ref name, or
-//     its type keyword); the types are not compared any deeper.
+//     its type keyword); the types are not compared any deeper. A GET property
+//     marked writeOnly is never returned, so it is not expected in the superset.
 //
 // A response that matches none of these forms, such as one that only carries
 // an id, is reported.
@@ -392,6 +396,10 @@ func resourceResponseConsistencySuperset(root, schema, get *yaml.Node) bool {
 	have := oas.Get(oas.Resolve(root, schema), "properties")
 
 	for key, expected := range oas.Pairs(wanted) {
+		if oas.Marked(root, expected, "writeOnly") {
+			continue
+		}
+
 		actual := oas.Get(have, key.Value)
 		if actual == nil ||
 			resourceResponseConsistencyTypeName(actual) != resourceResponseConsistencyTypeName(expected) {
@@ -444,8 +452,11 @@ func resourceResponseConsistencyCanon(root, node *yaml.Node, depth int, ancestor
 
 	switch {
 	case oas.IsMap(resolved):
-		parts := seq.Map(slices.Values(slices.Sorted(slices.Values(oas.Keys(resolved)))), func(key string) string {
-			return key + ":" + resourceResponseConsistencyCanon(root, oas.Get(resolved, key), depth+1, path)
+		shared := oas.Without(resolved, func(property *yaml.Node) bool {
+			return oas.Marked(root, property, "writeOnly")
+		})
+		parts := seq.Map(slices.Values(slices.Sorted(slices.Values(oas.Keys(shared)))), func(key string) string {
+			return key + ":" + resourceResponseConsistencyCanon(root, oas.Get(shared, key), depth+1, path)
 		})
 
 		return "{" + strings.Join(parts, ",") + "}"

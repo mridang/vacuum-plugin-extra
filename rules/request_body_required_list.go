@@ -22,6 +22,11 @@ const requestBodyRequiredListJSON = "application/json"
 // mandatory properties. A schema that declares properties but has no required
 // list, or an empty one, is reported. The schema is read from the media types
 // named by the mediaTypes option, and a $ref schema is followed to its target.
+// A property marked readOnly is never sent in a request, so it is neither
+// counted as a property nor accepted as a required entry: a schema whose only
+// properties are readOnly is not reported, and a required list that names only
+// readOnly properties does not satisfy the rule. The marker is read through $ref
+// and allOf.
 //
 // # Why
 //
@@ -87,6 +92,21 @@ func RequestBodyRequiredList() Rule {
 	})
 }
 
+// requestBodyRequiredListMissing reports whether the schema has a property a client can send
+// but no required list that names a property the client must send.
+func requestBodyRequiredListMissing(root, schema *yaml.Node) bool {
+	properties := oas.Get(schema, "properties")
+	readOnly := func(name string) bool {
+		return oas.Marked(root, oas.Get(properties, name), "readOnly")
+	}
+	writable := slices.ContainsFunc(oas.Keys(properties), func(name string) bool {
+		return !readOnly(name)
+	})
+	demanded := slices.DeleteFunc(oas.Strings(oas.Get(schema, "required")), readOnly)
+
+	return writable && len(demanded) == 0
+}
+
 func checkRequestBodyRequiredList(call *Call, operation oas.Operation) []Finding {
 	wanted := seq.Map(slices.Values(call.Strings("mediaTypes")), func(mediaType string) string {
 		return strings.ToLower(strings.TrimSpace(mediaType))
@@ -99,7 +119,7 @@ func checkRequestBodyRequiredList(call *Call, operation oas.Operation) []Finding
 
 		return When(
 			slices.Contains(wanted, strings.ToLower(name.Value)) &&
-				!oas.Empty(oas.Get(schema, "properties")) && oas.Empty(oas.Get(schema, "required")),
+				requestBodyRequiredListMissing(call.Root, schema),
 			func() Finding {
 				return Finding{
 					Node:    oas.Get(media, "schema"),

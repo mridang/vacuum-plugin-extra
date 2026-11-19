@@ -30,6 +30,13 @@ const (
 // keywords are ignored. A put media type that the get response does not offer
 // is not compared, and neither is a path without both operations.
 //
+// A property marked readOnly or writeOnly is left out of the comparison on both
+// sides, together with its name in any required list. A readOnly property is
+// never sent in a request and a writeOnly property is never returned in a
+// response, so a write-only password in the put body and a read-only timestamp
+// in the get response are a consistent pair. The markers are read through $ref
+// and allOf.
+//
 // # Why
 //
 // PUT replaces the representation that GET returns. When the two schemas drift
@@ -69,10 +76,11 @@ const (
 //
 // # Known false positives and limitations
 //
-// Resources whose read model contains server-generated fields (ids, timestamps)
-// legitimately differ from the write model; configure a different
-// response code or suppress the rule for them. Equality is exact: reordering of
-// allOf members or required entries counts as a difference.
+// Resources whose read model contains server-generated fields that are not
+// marked readOnly (ids, timestamps) legitimately differ from the write model;
+// configure a different response code or suppress the rule for them. Equality
+// is exact: reordering of allOf members or required entries counts as a
+// difference.
 func PutBodyMatchesGetResponse() Rule {
 	return New(Spec{
 		Name:        "put-body-matches-get-response",
@@ -152,7 +160,15 @@ func putBodyMatchesGetResponseCanon(root, node *yaml.Node, seen []string, depth 
 	}
 }
 
+// putBodyMatchesGetResponseHidden reports whether a property is outside the comparison.
+func putBodyMatchesGetResponseHidden(root *yaml.Node) func(*yaml.Node) bool {
+	return func(property *yaml.Node) bool {
+		return oas.Marked(root, property, "readOnly") || oas.Marked(root, property, "writeOnly")
+	}
+}
+
 // putBodyMatchesGetResponseCanonMap renders a mapping with sorted keys, following a $ref.
+// Properties that are readOnly or writeOnly are left out of the rendering.
 func putBodyMatchesGetResponseCanonMap(root, node *yaml.Node, seen []string, depth int) string {
 	if ref := oas.Ref(node); ref != "" {
 		target := oas.Pointer(root, ref)
@@ -163,7 +179,8 @@ func putBodyMatchesGetResponseCanonMap(root, node *yaml.Node, seen []string, dep
 		return putBodyMatchesGetResponseCanon(root, target, slices.Concat(seen, []string{ref}), depth+1)
 	}
 
-	parts := seq.FlatMapPairs(oas.Pairs(node), func(key, value *yaml.Node) []string {
+	shared := oas.Without(node, putBodyMatchesGetResponseHidden(root))
+	parts := seq.FlatMapPairs(oas.Pairs(shared), func(key, value *yaml.Node) []string {
 		if slices.Contains(putBodyMatchesGetResponseIgnored(), key.Value) {
 			return nil
 		}
