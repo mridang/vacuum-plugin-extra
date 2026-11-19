@@ -227,8 +227,7 @@ linters:
       forbid-mutex: true
 
     gomoddirectives:
-      # This repository is a single module; the allow-list is kept so the
-      # configuration matches the sibling repositories.
+      # Local replace directives are allowed only for the project's own modules.
       replace-allow-list:
         - github.com/mridang/vacuum-plugin-extra
       replace-local: true
@@ -244,7 +243,7 @@ linters:
       # Default: [ switch ]
       check:
         - switch
-        - mapliteral
+        - map
 
     exhaustruct:
       # List of regular expressions to match type names that should be excluded from processing.
