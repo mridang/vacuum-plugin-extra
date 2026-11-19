@@ -47,7 +47,12 @@ components:
 	t.Run("accepts an inline allOf member next to a reference when allowed", func(t *testing.T) {
 		t.Parallel()
 
-		ruletest.RequireClean(t, rule, ruletest.Doc31(avoidInlineAllOfExtension), ruletest.Options{"allowAllOfExtension": true})
+		ruletest.RequireClean(
+			t,
+			rule,
+			ruletest.Doc31(avoidInlineAllOfExtension),
+			ruletest.Options{"allowAllOfExtension": true},
+		)
 	})
 
 	t.Run("flags an inline allOf member next to a reference by default", func(t *testing.T) {
