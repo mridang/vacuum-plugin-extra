@@ -116,7 +116,9 @@ rules:
     type: style
     then:
       function: extra-api-symmetry-get-vs-write-schemas
-      functionOptions: {}
+      functionOptions:
+        casing:
+          - PascalCase
   extra-api-version-in-url:
     description: The API must expose a version in a server URL, a path or a version header.
     message: "{{error}}"
@@ -207,6 +209,10 @@ rules:
     then:
       function: extra-boolean-parameter-prefix
       functionOptions:
+        casing:
+          - camelCase
+          - snake_case
+          - kebab-case
         prefixes:
           - is
           - has
@@ -906,14 +912,16 @@ rules:
   extra-no-uuid-suffix-property:
     description: UUID properties must not have names ending in _uuid.
     message: "{{error}}"
-    howToFix: Rename the property to end in _id.
+    howToFix: Rename the property to end in id, such as project_id.
     given: $
     resolved: false
     severity: warn
     type: style
     then:
       function: extra-no-uuid-suffix-property
-      functionOptions: {}
+      functionOptions:
+        casing:
+          - snake_case
   extra-no-whitespace-in-example-keys:
     description: Keys of response examples maps must not contain whitespace.
     message: "{{error}}"
@@ -1082,6 +1090,8 @@ rules:
     then:
       function: extra-operation-id-max-prefixes
       functionOptions:
+        casing:
+          - camelCase
         max: 5
   extra-operation-id-reserved-word:
     description: The operationId must not be a reserved word of the target language.
@@ -1133,7 +1143,7 @@ rules:
   extra-operation-id-verb-matches-method:
     description: The verb and resource of an operationId must match the HTTP method and path of the operation.
     message: "{{error}}"
-    howToFix: Name the operation <verb>_<resource>, for example list_bands, get_band or create_band.
+    howToFix: Name it <verb><resource> in the configured casing, such as list_bands or listBands.
     given: $
     resolved: false
     severity: warn
@@ -1141,6 +1151,8 @@ rules:
     then:
       function: extra-operation-id-verb-matches-method
       functionOptions:
+        casing:
+          - snake_case
         strict: true
   extra-operation-id-verb-prefix:
     description: An operationId must start with a common verb followed by an upper-case letter.
@@ -1153,6 +1165,8 @@ rules:
     then:
       function: extra-operation-id-verb-prefix
       functionOptions:
+        casing:
+          - camelCase
         prefixes:
           - get
           - list
@@ -1643,7 +1657,9 @@ rules:
     type: style
     then:
       function: extra-resource-schema-naming-convention
-      functionOptions: {}
+      functionOptions:
+        casing:
+          - PascalCase
   extra-response-contains-header:
     description: Responses must declare the headers configured for their status code.
     message: "{{error}}"
