@@ -101,4 +101,62 @@ paths:
           description: ok
 `), ruletest.Options{"adminUrl": "/internal"}, "$.paths['/internal/users'].get.security[0]")
 	})
+
+	const nearMissDoc = `
+paths:
+  /users:
+    get:
+      security:
+        - key: []
+      responses:
+        "200":
+          description: ok
+  /x/admins:
+    get:
+      security:
+        - key: []
+      responses:
+        "200":
+          description: ok
+`
+
+	t.Run("substring mode flags a route that merely contains the text", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(nearMissDoc), ruletest.Options{"adminMatch": "substring"},
+			"$.paths['/x/admins'].get.security[0]")
+	})
+
+	t.Run("segment mode ignores a route that merely contains the text", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(nearMissDoc), ruletest.Options{"adminMatch": "segment"})
+	})
+
+	t.Run("an admin segment is administrative in both modes", func(t *testing.T) {
+		t.Parallel()
+
+		const doc = `
+paths:
+  /users:
+    get:
+      security:
+        - key: []
+      responses:
+        "200":
+          description: ok
+  /x/admin/y:
+    get:
+      security:
+        - key: []
+      responses:
+        "200":
+          description: ok
+`
+
+		for _, mode := range []string{"substring", "segment"} {
+			ruletest.RequirePaths(t, rule, ruletest.Doc30(doc), ruletest.Options{"adminMatch": mode},
+				"$.paths['/x/admin/y'].get.security[0]")
+		}
+	})
 }
