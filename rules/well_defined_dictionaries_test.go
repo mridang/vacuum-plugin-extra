@@ -9,9 +9,10 @@ import (
 	"github.com/mridang/vacuum-plugin-extra/rules"
 )
 
-// emptyObjectsDoc holds object schemas that declare no properties: closed, capped at zero, bare and a oneOf of
+// emptyObjectsDoc returns object schemas that declare no properties: closed, capped at zero, bare and a oneOf of
 // closed objects.
-var emptyObjectsDoc = ruletest.Doc31(`
+func emptyObjectsDoc() string {
+	return ruletest.Doc31(`
 components:
   schemas:
     Closed:
@@ -29,6 +30,7 @@ components:
         - type: object
           additionalProperties: false
 `)
+}
 
 func TestWellDefinedDictionaries(t *testing.T) {
 	t.Parallel()
@@ -186,7 +188,7 @@ components:
 	t.Run("keeps reporting empty objects by default", func(t *testing.T) {
 		t.Parallel()
 
-		ruletest.RequirePaths(t, rule, emptyObjectsDoc, nil,
+		ruletest.RequirePaths(t, rule, emptyObjectsDoc(), nil,
 			"$.components.schemas.Closed",
 			"$.components.schemas.Zero",
 			"$.components.schemas.Bare",
@@ -196,7 +198,7 @@ components:
 	t.Run("accepts intentionally empty objects when allowEmptyObjects is set", func(t *testing.T) {
 		t.Parallel()
 
-		ruletest.RequirePaths(t, rule, emptyObjectsDoc, ruletest.Options{"allowEmptyObjects": true},
+		ruletest.RequirePaths(t, rule, emptyObjectsDoc(), ruletest.Options{"allowEmptyObjects": true},
 			"$.components.schemas.Bare")
 	})
 
