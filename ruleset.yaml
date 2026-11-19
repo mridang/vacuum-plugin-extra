@@ -1616,7 +1616,7 @@ rules:
           - Content-Type
           - Authorization
   extra-resource-response-consistency:
-    description: Create and update operations must return the same schema as the GET of the resource.
+    description: Create and update operations must return the same schema as the GET of the resource, or an extension of it.
     message: "{{error}}"
     howToFix: Return the schema that the GET operation of the resource returns.
     given: $
