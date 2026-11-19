@@ -161,6 +161,36 @@ components:
 `), nil)
 	})
 
+	t.Run("skips an inline object under not but flags the same object elsewhere", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                not:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+`), nil, "$.paths['/pets'].get.responses['201'].content['application/json'].schema")
+	})
+
 	t.Run("accepts a free form object", func(t *testing.T) {
 		t.Parallel()
 

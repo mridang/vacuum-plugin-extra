@@ -20,7 +20,9 @@ import (
 // allOf, anyOf or oneOf. The schema positions that are inspected are request
 // and response bodies, parameters and headers, and every nested position
 // (properties, items, additionalProperties and the composition keywords).
-// Primitive schemas such as a string or an array of strings are never reported.
+// Primitive schemas such as a string or an array of strings are never reported,
+// and neither is a schema below not, if, then or else, because those schemas
+// constrain a value rather than describe one.
 //
 // Named models give code generators a type name to use, keep the description
 // of a structure in one place and make the document smaller. Anonymous inline
@@ -96,7 +98,9 @@ func AvoidInlineObjectSchemas() Rule {
 func checkAvoidInlineObjectSchemas(call *Call, schema oas.Schema) []Finding {
 	inline := avoidInlineObjectSchemasIsInlineObject(schema.Node, call.Bool("allowReferenceUnions"))
 
-	return When(schema.Component == "" && inline, func() Finding {
+	negated := oas.UnderNegation(schema.Path)
+
+	return When(schema.Component == "" && inline && !negated, func() Finding {
 		return Finding{
 			Node:    schema.Node,
 			Path:    schema.Path,
