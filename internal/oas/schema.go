@@ -404,8 +404,10 @@ func marked(root, node *yaml.Node, keyword string, depth int) bool {
 }
 
 // Without returns a copy of the schema in which every property that drop
-// reports is removed, together with its name in the required list. The
-// schema itself is returned unchanged when no property is dropped.
+// reports is removed, together with its name in the required list. A required
+// list that the removal leaves empty is removed as well, so that it reads the
+// same as a schema without one. The schema itself is returned unchanged when
+// no property is dropped.
 func Without(schema *yaml.Node, drop func(property *yaml.Node) bool) *yaml.Node {
 	dropped := seq.FlatMapPairs(Pairs(Get(schema, "properties")), func(key, value *yaml.Node) []string {
 		if drop(value) {
@@ -423,7 +425,12 @@ func Without(schema *yaml.Node, drop func(property *yaml.Node) bool) *yaml.Node 
 		case "properties":
 			value = withoutEntries(value, dropped)
 		case "required":
-			value = withoutItems(value, dropped)
+			kept := withoutItems(value, dropped)
+			if IsSeq(value) && len(kept.Content) == 0 {
+				return nil
+			}
+
+			value = kept
 		}
 
 		return []*yaml.Node{key, value}

@@ -31,7 +31,8 @@ const (
 // is not compared, and neither is a path without both operations.
 //
 // A property marked readOnly or writeOnly is left out of the comparison on both
-// sides, together with its name in any required list. A readOnly property is
+// sides, together with its name in any required list; a required list that is
+// left empty that way reads the same as a missing one. A readOnly property is
 // never sent in a request and a writeOnly property is never returned in a
 // response, so a write-only password in the put body and a read-only timestamp
 // in the get response are a consistent pair. The markers are read through $ref
