@@ -44,6 +44,31 @@ components:
 `), nil)
 	})
 
+	t.Run("skips properties under not, if, then and else", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Step:
+      type: object
+      properties:
+        name: {type: string}
+      not:
+        properties:
+          hidden: {type: string}
+      if:
+        properties:
+          gated: {type: string}
+      then:
+        properties:
+          fromThen: {type: string}
+      else:
+        properties:
+          fromElse: {type: string}
+`), nil, "$.components.schemas.Step.properties.name")
+	})
+
 	t.Run("checks nested inline schemas", func(t *testing.T) {
 		t.Parallel()
 
