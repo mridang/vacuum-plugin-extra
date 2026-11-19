@@ -23,6 +23,13 @@ import (
 // different types). Properties without a type, and properties whose $ref
 // cannot be resolved, are ignored.
 //
+// With ignoreNull (the default) null is dropped from the declared types, as
+// extra-composition-branches-same-type does, so that a nullable property such
+// as [string, "null"] has the same type as a plain string, and a property whose
+// only type is null has no type. Set ignoreNull to false to compare null as a
+// type of its own. A property declared through oneOf, anyOf or allOf has no
+// type of its own and is not compared.
+//
 // # Why
 //
 // A field called "id" that is a string in one schema and an integer in another
@@ -37,6 +44,8 @@ import (
 // # Options
 //
 //   - ignore (list of strings, default empty): property names that are exempt.
+//   - ignoreNull (bool, default true): drop null from the declared types before
+//     they are compared, and skip properties whose only type is null.
 //
 // # Bad
 //
@@ -77,13 +86,23 @@ func ConsistentPropertyNameAndType() Rule {
 		Severity:    model.SeverityWarn,
 		Given:       "$",
 		Type:        TypeStyle,
-		Options: []Option{{
-			Name:        "ignore",
-			Description: "Property names that are exempt from the check.",
-		}},
+		Options: []Option{
+			{
+				Name:        "ignore",
+				Description: "Property names that are exempt from the check.",
+			},
+			{
+				Name:        consistentPropertyNameAndTypeIgnoreNull,
+				Description: "Skip null types and drop null from type lists before comparing property types.",
+				Default:     true,
+			},
+		},
 		Check: OnDocument(checkConsistentPropertyNameAndType),
 	})
 }
+
+// consistentPropertyNameAndTypeIgnoreNull is the option that drops null from the declared types.
+const consistentPropertyNameAndTypeIgnoreNull = "ignoreNull"
 
 // consistentPropertyNameAndTypeUse is one declaration of a named property.
 type consistentPropertyNameAndTypeUse struct {
@@ -97,11 +116,12 @@ type consistentPropertyNameAndTypeUse struct {
 // from the type of the first property of the same name.
 func checkConsistentPropertyNameAndType(call *Call) []Finding {
 	ignored := call.Strings("ignore")
+	ignoreNull := call.Bool(consistentPropertyNameAndTypeIgnoreNull)
 
 	uses := seq.FlatMap(oas.Schemas(call.Root), func(schema oas.Schema) []consistentPropertyNameAndTypeUse {
 		return seq.FlatMapPairs(oas.Pairs(oas.Get(schema.Node, "properties")),
 			func(name, value *yaml.Node) []consistentPropertyNameAndTypeUse {
-				kind := consistentPropertyNameAndTypeKind(call.Root, value)
+				kind := consistentPropertyNameAndTypeKind(call.Root, value, ignoreNull)
 
 				if kind == "" || slices.Contains(ignored, name.Value) {
 					return nil
@@ -134,9 +154,9 @@ func checkConsistentPropertyNameAndType(call *Call) []Finding {
 }
 
 // consistentPropertyNameAndTypeKind returns the sorted, joined types of the
-// resolved property schema.
-func consistentPropertyNameAndTypeKind(root, property *yaml.Node) string {
-	types := slices.Clone(oas.Types(oas.Resolve(root, property)))
+// resolved property schema, without null when ignoreNull is set.
+func consistentPropertyNameAndTypeKind(root, property *yaml.Node, ignoreNull bool) string {
+	types := slices.Clone(compositionBranchesSameTypeDeclared(oas.Resolve(root, property), ignoreNull))
 	slices.Sort(types)
 
 	return strings.Join(types, "|")
