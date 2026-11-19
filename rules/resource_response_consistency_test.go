@@ -300,4 +300,354 @@ paths:
                 $ref: "#/components/schemas/ThingSummary"
 `+resourceResponseConsistencySchemas), nil)
 	})
+
+	t.Run("ignores writeOnly properties on both sides", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name]
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  secret: {type: string, writeOnly: true}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, name, token]
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  token: {type: string, writeOnly: true}
+`), nil)
+	})
+
+	t.Run("still reports an unmarked difference beside writeOnly properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: integer}
+                  secret: {type: string, writeOnly: true}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+`), nil, "$.paths['/things'].post.responses['201'].content['application/json']")
+	})
+
+	t.Run("accepts a create whose allOf includes the GET schema", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Thing"
+                  - type: object
+                    properties:
+                      token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil)
+	})
+
+	t.Run("accepts a create whose composed schema resolves to the GET schema", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThingWithToken"
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+    ThingWithToken:
+      allOf:
+        - $ref: "#/components/schemas/Thing"
+        - type: object
+          properties:
+            token: {type: string}
+`), nil)
+	})
+
+	t.Run("accepts a create envelope that holds the GET schema in a property", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  thing:
+                    $ref: "#/components/schemas/Thing"
+                  thing_token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil)
+	})
+
+	t.Run("accepts a create whose properties are a superset of the GET properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil)
+	})
+
+	t.Run("accepts an identical schema by the same reference", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil)
+	})
+
+	t.Run("still reports an allOf that does not include the GET schema", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ThingSummary"
+                  - type: object
+                    properties:
+                      token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil,
+			"$.paths['/things'].post.responses['201'].content['application/json']")
+	})
+
+	t.Run("still reports an envelope that does not hold the GET schema", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    $ref: "#/components/schemas/ThingSummary"
+                  thing_token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil,
+			"$.paths['/things'].post.responses['201'].content['application/json']")
+	})
+
+	t.Run("still reports a superset of names whose property type differs", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: integer}
+                  name: {type: string}
+                  token: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Thing"
+`+resourceResponseConsistencySchemas), nil,
+			"$.paths['/things'].post.responses['201'].content['application/json']")
+	})
+
+	t.Run("does not expect a writeOnly GET property in a superset", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /things:
+    post:
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+  /things/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {type: string}
+                  name: {type: string}
+                  token: {type: string, writeOnly: true}
+`), nil)
+	})
 }

@@ -163,4 +163,74 @@ paths:
 		ruletest.RequirePaths(t, rule, document, ruletest.Options{"mediaTypes": []string{"application/xml"}},
 			"$.paths['/pets'].post.requestBody.content['application/xml'].schema")
 	})
+
+	t.Run("does not count readOnly properties as properties to require", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id: {type: string, readOnly: true}
+                created: {$ref: "#/components/schemas/Stamp"}
+      responses:
+        "201":
+          description: created
+components:
+  schemas:
+    Stamp:
+      type: string
+      readOnly: true
+`), nil)
+	})
+
+	t.Run("does not accept a required list that names only readOnly properties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: {type: string, readOnly: true}
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+`), nil, "$.paths['/pets'].post.requestBody.content['application/json'].schema")
+	})
+
+	t.Run("accepts a required list that names a writable property beside readOnly ones", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                id: {type: string, readOnly: true}
+                name: {type: string}
+      responses:
+        "201":
+          description: created
+`), nil)
+	})
 }

@@ -53,7 +53,41 @@ components:
 `), nil)
 	})
 
-	t.Run("treats nullable type lists as different in 3.1", func(t *testing.T) {
+	t.Run("treats a nullable type list as its plain type", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        purpose: {type: string}
+    Owner:
+      type: object
+      properties:
+        purpose: {type: [string, "null"]}
+`), nil)
+	})
+
+	t.Run("does not give a property whose only type is null a type", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        purpose: {type: string}
+    Owner:
+      type: object
+      properties:
+        purpose: {type: "null"}
+`), nil)
+	})
+
+	t.Run("reports null as a type when ignoreNull is false", func(t *testing.T) {
 		t.Parallel()
 
 		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
@@ -62,12 +96,29 @@ components:
     Pet:
       type: object
       properties:
-        age: {type: integer}
+        purpose: {type: string}
     Owner:
       type: object
       properties:
-        age: {type: [integer, "null"]}
-`), nil, "$.components.schemas.Owner.properties.age")
+        purpose: {type: [string, "null"]}
+`), ruletest.Options{"ignoreNull": false}, "$.components.schemas.Owner.properties.purpose")
+	})
+
+	t.Run("still reports a string against an object", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        purpose: {type: string}
+    Owner:
+      type: object
+      properties:
+        purpose: {type: object}
+`), nil, "$.components.schemas.Owner.properties.purpose")
 	})
 
 	t.Run("honours the ignore option", func(t *testing.T) {

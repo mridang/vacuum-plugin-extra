@@ -267,7 +267,8 @@ rules:
     type: style
     then:
       function: extra-consistent-property-name-and-type
-      functionOptions: {}
+      functionOptions:
+        ignoreNull: true
   extra-content-must-have-schema:
     description: Every content entry of a request body, response or parameter must contain a schema.
     message: "{{error}}"
@@ -1616,7 +1617,7 @@ rules:
           - Content-Type
           - Authorization
   extra-resource-response-consistency:
-    description: Create and update operations must return the same schema as the GET of the resource.
+    description: Create and update operations must return the same schema as the GET of the resource, or an extension of it.
     message: "{{error}}"
     howToFix: Return the schema that the GET operation of the resource returns.
     given: $
