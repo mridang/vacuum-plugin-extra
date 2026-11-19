@@ -267,7 +267,8 @@ rules:
     type: style
     then:
       function: extra-consistent-property-name-and-type
-      functionOptions: {}
+      functionOptions:
+        ignoreNull: true
   extra-content-must-have-schema:
     description: Every content entry of a request body, response or parameter must contain a schema.
     message: "{{error}}"

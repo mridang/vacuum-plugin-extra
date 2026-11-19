@@ -154,6 +154,20 @@ func compositionBranchesSameTypeBranches(value *yaml.Node) []*yaml.Node {
 	return []*yaml.Node{value}
 }
 
+// compositionBranchesSameTypeDeclared returns the types a schema declares, sorted as oas.Types
+// returns them. With ignoreNull the null type is dropped, so that [string, "null"] counts as a
+// string. The consistent property rule reuses it for the type of a property.
+func compositionBranchesSameTypeDeclared(schema *yaml.Node, ignoreNull bool) []string {
+	declared := oas.Types(schema)
+	if ignoreNull {
+		declared = slices.DeleteFunc(declared, func(name string) bool {
+			return name == compositionBranchesSameTypeNull
+		})
+	}
+
+	return declared
+}
+
 func compositionBranchesSameTypeLeaf(root, branch *yaml.Node, depth int, ignoreNull bool) []string {
 	if !oas.IsMap(branch) {
 		return nil
@@ -163,13 +177,7 @@ func compositionBranchesSameTypeLeaf(root, branch *yaml.Node, depth int, ignoreN
 		return compositionBranchesSameTypeCollect(root, branch, depth, ignoreNull)
 	}
 
-	declared := oas.Types(branch)
-	if ignoreNull {
-		declared = slices.DeleteFunc(declared, func(name string) bool {
-			return name == compositionBranchesSameTypeNull
-		})
-	}
-
+	declared := compositionBranchesSameTypeDeclared(branch, ignoreNull)
 	if len(declared) == 0 {
 		return nil
 	}
