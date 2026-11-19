@@ -44,6 +44,110 @@ components:
 `), ruletest.Options{"allowReferenceUnions": true})
 	})
 
+	t.Run("accepts a nullable scalar union when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: string
+                  - type: "null"
+`), ruletest.Options{"allowReferenceUnions": true})
+	})
+
+	t.Run("accepts a union of an enum and a reference when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - enum: [cat, dog]
+                  - $ref: "#/components/schemas/Pet"
+components:
+  schemas:
+    Pet: {type: object, properties: {a: {type: string}}}
+`), ruletest.Options{"allowReferenceUnions": true})
+	})
+
+	t.Run("accepts a union with a free form object when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                  - type: "null"
+`), ruletest.Options{"allowReferenceUnions": true})
+	})
+
+	t.Run("flags a union that holds an inline object with properties when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      name:
+                        type: string
+                  - type: "null"
+`), ruletest.Options{"allowReferenceUnions": true},
+			"$.paths['/pets'].get.responses['200'].content['application/json'].schema",
+			"$.paths['/pets'].get.responses['200'].content['application/json'].schema.oneOf[0]",
+		)
+	})
+
+	t.Run("flags a nullable scalar union when the option is off", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: string
+                  - type: "null"
+`), nil, "$.paths['/pets'].get.responses['200'].content['application/json'].schema")
+	})
+
 	t.Run("flags an inline request body object", func(t *testing.T) {
 		t.Parallel()
 
