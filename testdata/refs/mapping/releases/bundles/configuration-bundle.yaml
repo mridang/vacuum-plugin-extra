@@ -1,0 +1,11 @@
+type: object
+properties:
+  schemas:
+    type: array
+    items:
+      oneOf:
+        - $ref: ../../schemas/user-schema.yaml
+      discriminator:
+        propertyName: kind
+        mapping:
+          user-schema: ../../schemas/user-schema.yaml
