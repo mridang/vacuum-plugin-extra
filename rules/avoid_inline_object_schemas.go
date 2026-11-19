@@ -2,6 +2,7 @@ package rules
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
@@ -101,6 +102,10 @@ func AvoidInlineObjectSchemas() Rule {
 			Name:        "allowAllOfExtension",
 			Description: "Do not report an inline allOf member when a sibling member of the same allOf is a $ref.",
 			Default:     false,
+		}, {
+			Name:        "allowNested",
+			Description: "Do not report an inline object nested inside a named schema under components/schemas.",
+			Default:     false,
 		}},
 		Check: func(call *Call) []Finding {
 			extensions := avoidInlineObjectSchemasExtensions(call)
@@ -144,7 +149,9 @@ func checkAvoidInlineObjectSchemas(call *Call, schema oas.Schema, extensions map
 
 	negated := oas.UnderNegation(schema.Path)
 
-	return When(schema.Component == "" && inline && !negated, func() Finding {
+	nested := call.Bool("allowNested") && strings.HasPrefix(schema.Path, avoidInlineObjectSchemasComponents)
+
+	return When(schema.Component == "" && inline && !negated && !nested, func() Finding {
 		return Finding{
 			Node:    schema.Node,
 			Path:    schema.Path,
@@ -236,4 +243,7 @@ const (
 	avoidInlineObjectSchemasAllOf   = "allOf"
 	avoidInlineObjectSchemasAnyOf   = "anyOf"
 	avoidInlineObjectSchemasBoolean = "boolean"
+	// avoidInlineObjectSchemasComponents prefixes the path of every schema
+	// inside a named schema under components/schemas.
+	avoidInlineObjectSchemasComponents = "$.components.schemas"
 )

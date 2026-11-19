@@ -334,6 +334,59 @@ paths:
 `), nil, "$.paths['/pets'].get.responses['201'].content['application/json'].schema")
 	})
 
+	t.Run("accepts objects nested in a named schema when allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(
+			t,
+			rule,
+			ruletest.Doc31(avoidInlineNestedComponent),
+			ruletest.Options{"allowNested": true},
+		)
+	})
+
+	t.Run("flags objects nested in a named schema by default", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(avoidInlineNestedComponent), nil,
+			"$.components.schemas.Page.properties.sorting",
+			"$.components.schemas.Page.properties.rows.items",
+			"$.components.schemas.Page.properties.extra.additionalProperties",
+			"$.components.schemas.Page.allOf[1]",
+		)
+	})
+
+	t.Run("flags inline request and response bodies when nested is allowed", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc31(`
+paths:
+  /pets:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string}
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id: {type: string}
+`), ruletest.Options{"allowNested": true},
+			"$.paths['/pets'].post.requestBody.content['application/json'].schema",
+			"$.paths['/pets'].post.responses['200'].content['application/json'].schema.items",
+		)
+	})
+
 	t.Run("accepts a free form object", func(t *testing.T) {
 		t.Parallel()
 
@@ -361,4 +414,29 @@ components:
         - $ref: "#/components/schemas/Base"
         - type: object
           properties: {b: {type: string}}
+`
+
+const avoidInlineNestedComponent = `
+components:
+  schemas:
+    Base: {type: object, properties: {a: {type: string}}}
+    Page:
+      allOf:
+        - $ref: "#/components/schemas/Base"
+        - type: object
+          properties: {b: {type: string}}
+      properties:
+        sorting:
+          type: object
+          properties: {field: {type: string}}
+        rows:
+          type: array
+          items:
+            type: object
+            properties: {id: {type: string}}
+        extra:
+          type: object
+          additionalProperties:
+            type: object
+            properties: {k: {type: string}}
 `
