@@ -44,6 +44,18 @@ func bundleExternalRefs(spec []byte, path string) ([]byte, error) {
 	return bundled, nil
 }
 
+// specDir returns the absolute directory of the spec. The bundler leaves the
+// $ref under an x- key pointing at its file, rewritten to be relative to this
+// directory, so the rules need it as their base to find that file.
+func specDir(path string) (string, error) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolve spec path: %w", err)
+	}
+
+	return filepath.Dir(absolute), nil
+}
+
 // hasFileRefs reports whether any $ref of the document points outside it and
 // is not an http or https URL.
 func hasFileRefs(spec []byte) bool {

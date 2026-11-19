@@ -609,3 +609,43 @@ extra-does-not-exist:
 	require.Contains(t, errOut.String(), "rule=extra-does-not-exist")
 	require.NotContains(t, errOut.String(), "msg=suppressed")
 }
+
+func resolvingReferences(t *testing.T, spec string) []cli.Finding {
+	t.Helper()
+
+	var out, errOut bytes.Buffer
+
+	code := cli.Run(
+		[]string{"-format", "json", "-fail-on", "none", "-only", "resolving-references", spec},
+		&out,
+		&errOut,
+	)
+	require.Equal(t, cli.ExitOK, code, errOut.String())
+
+	var findings []cli.Finding
+	require.NoError(t, json.Unmarshal(out.Bytes(), &findings))
+
+	return findings
+}
+
+func TestRunResolvesReferencesOfFilesReachedThroughDiscriminatorMappings(t *testing.T) {
+	t.Parallel()
+
+	require.Empty(t, resolvingReferences(t, filepath.Join("..", "..", "testdata", "refs", "mapping", "api.yaml")))
+}
+
+func TestRunStillReportsAReferenceToAMissingFile(t *testing.T) {
+	t.Parallel()
+
+	var out, errOut bytes.Buffer
+
+	spec := filepath.Join("..", "..", "testdata", "refs", "missing", "api.yaml")
+	code := cli.Run(
+		[]string{"-format", "json", "-fail-on", "none", "-only", "resolving-references", spec},
+		&out,
+		&errOut,
+	)
+
+	require.Equal(t, cli.ExitUsage, code)
+	require.Contains(t, errOut.String(), "auth-methods.yaml")
+}

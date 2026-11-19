@@ -1,0 +1,5 @@
+type: object
+properties:
+  kind: { type: string }
+x-auth-methods:
+  $ref: auth-methods.yaml
