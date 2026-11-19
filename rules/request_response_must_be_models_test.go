@@ -162,4 +162,69 @@ paths:
                         type: string
 `), nil, "$.paths['/pets'].get.responses['200'].content['application/json'].schema")
 	})
+
+	t.Run("allowDictionaries accepts a body with a typed additionalProperties", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequireClean(t, rule, ruletest.Doc30(`
+paths:
+  /variables:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+`), ruletest.Options{"allowDictionaries": true})
+	})
+
+	t.Run("allowDictionaries still reports a body without a value type", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /variables:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "201":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+`), ruletest.Options{"allowDictionaries": true},
+			"$.paths['/variables'].get.responses['200'].content['application/json'].schema",
+			"$.paths['/variables'].get.responses['201'].content['application/json'].schema")
+	})
+
+	t.Run("allowDictionaries defaults to reporting a typed additionalProperties body", func(t *testing.T) {
+		t.Parallel()
+
+		ruletest.RequirePaths(t, rule, ruletest.Doc30(`
+paths:
+  /variables:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+`), nil, "$.paths['/variables'].get.responses['200'].content['application/json'].schema")
+	})
 }

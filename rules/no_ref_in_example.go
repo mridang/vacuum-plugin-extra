@@ -120,7 +120,7 @@ func noRefInExampleEntry(key string, value *yaml.Node, path string, names bool) 
 // noRefInExampleRefs reports every $ref key found below an example value.
 func noRefInExampleRefs(example *yaml.Node, path string) []Finding {
 	return seq.FlatMap(oas.Walk(example, path), func(node oas.Node) []Finding {
-		return When(node.Key == "$ref", func() Finding {
+		return When(node.Key == strictRefLocationsRef, func() Finding {
 			return Finding{
 				Node:    node.Node,
 				Path:    node.Path,
