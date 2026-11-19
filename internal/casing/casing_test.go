@@ -159,3 +159,51 @@ func TestSet(t *testing.T) {
 	require.True(t, empty.Matches("Anything-goes"))
 	require.Equal(t, "Anything-goes", empty.Convert("Anything-goes"))
 }
+
+func TestCasingAppend(t *testing.T) {
+	t.Parallel()
+
+	want := map[casing.Casing]string{
+		casing.Kebab:          "pet-patch",
+		casing.Snake:          "pet_patch",
+		casing.Camel:          "petPatch",
+		casing.Pascal:         "petPatch",
+		casing.ScreamingSnake: "pet_PATCH",
+		casing.ScreamingKebab: "pet-PATCH",
+		casing.Dot:            "pet.patch",
+		casing.Lower:          "petpatch",
+	}
+
+	for _, convention := range casing.All() {
+		require.Equal(t, want[convention], convention.Append("pet", "patch"), convention)
+	}
+
+	require.Equal(t, "Pet", casing.Set{}.Append("Pet", "patch"))
+	require.Equal(t, "petPatch", casing.Set{casing.Camel, casing.Snake}.Append("pet", "patch"))
+}
+
+func TestCasingSuffixes(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, []string{"_uuid"}, casing.Snake.Suffixes("uuid"))
+	require.Equal(t, []string{"Uuid", "UUID"}, casing.Camel.Suffixes("uuid"))
+	require.Equal(t, []string{"_UUID"}, casing.ScreamingSnake.Suffixes("uuid"))
+}
+
+func TestCasingHasWordPrefix(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, casing.Camel.HasWordPrefix("listPets", "list"))
+	require.False(t, casing.Camel.HasWordPrefix("list", "list"))
+	require.False(t, casing.Camel.HasWordPrefix("listpets", "list"))
+	require.True(t, casing.Pascal.HasWordPrefix("ListPets", "list"))
+	require.True(t, casing.Snake.HasWordPrefix("list_pets", "list"))
+	require.False(t, casing.Snake.HasWordPrefix("listPets", "list"))
+	require.True(t, casing.Kebab.HasWordPrefix("list-pets", "list"))
+	require.True(t, casing.Dot.HasWordPrefix("list.pets", "list"))
+	require.True(t, casing.ScreamingSnake.HasWordPrefix("LIST_PETS", "list"))
+	require.True(t, casing.ScreamingKebab.HasWordPrefix("LIST-PETS", "list"))
+	require.True(t, casing.Lower.HasWordPrefix("listpets", "list"))
+	require.False(t, casing.Lower.HasWordPrefix("list", "list"))
+	require.False(t, casing.Casing("bogus").HasWordPrefix("listPets", "list"))
+}

@@ -121,6 +121,74 @@ func (c Casing) Convert(name string) string {
 	}
 }
 
+// Suffixes returns the ways of writing word as the last word of a name in the
+// convention: "_uuid" in snake_case, "Uuid" and "UUID" in camelCase. The first
+// is the one Append uses.
+func (c Casing) Suffixes(word string) []string {
+	switch c {
+	case Kebab:
+		return []string{"-" + strings.ToLower(word)}
+	case Snake:
+		return []string{"_" + strings.ToLower(word)}
+	case ScreamingKebab:
+		return []string{"-" + strings.ToUpper(word)}
+	case ScreamingSnake:
+		return []string{"_" + strings.ToUpper(word)}
+	case Dot:
+		return []string{"." + strings.ToLower(word)}
+	case Camel, Pascal:
+		return []string{camelWord(word, true, false), strings.ToUpper(word)}
+	default:
+		return []string{strings.ToLower(word)}
+	}
+}
+
+// Append adds word to the end of name as a new word of the convention.
+func (c Casing) Append(name, word string) string {
+	return name + c.Suffixes(word)[0]
+}
+
+// HasWordPrefix reports whether name starts with word as its first word in the
+// convention. The word is matched as given, except in the capitalised
+// conventions. In the separated conventions the separator must follow it, in
+// the camel conventions an upper-case letter and in lowercase any character.
+func (c Casing) HasWordPrefix(name, word string) bool {
+	switch c {
+	case Kebab:
+		return strings.HasPrefix(name, word+"-")
+	case Snake:
+		return strings.HasPrefix(name, word+"_")
+	case ScreamingKebab:
+		return strings.HasPrefix(name, strings.ToUpper(word)+"-")
+	case ScreamingSnake:
+		return strings.HasPrefix(name, strings.ToUpper(word)+"_")
+	case Dot:
+		return strings.HasPrefix(name, word+".")
+	case Camel:
+		return upperAfter(name, word)
+	case Pascal:
+		return upperAfter(name, camelWord(word, true, false))
+	case Lower:
+		rest, found := strings.CutPrefix(name, word)
+
+		return found && rest != ""
+	default:
+		return false
+	}
+}
+
+// upperAfter reports whether name is prefix followed by an upper-case letter.
+func upperAfter(name, prefix string) bool {
+	rest, found := strings.CutPrefix(name, prefix)
+	if !found || rest == "" {
+		return false
+	}
+
+	first, _ := utf8.DecodeRuneInString(rest)
+
+	return unicode.IsUpper(first)
+}
+
 // Set is the list of conventions a name may follow; a name is valid when it
 // follows any one of them.
 type Set []Casing
@@ -156,6 +224,16 @@ func (s Set) Convert(name string) string {
 	}
 
 	return s[0].Convert(name)
+}
+
+// Append adds word to the end of name as a new word of the first convention of
+// the set. An empty set leaves the name alone.
+func (s Set) Append(name, word string) string {
+	if len(s) == 0 {
+		return name
+	}
+
+	return s[0].Append(name, word)
 }
 
 // String lists the conventions for a message: "snake_case or PascalCase".
