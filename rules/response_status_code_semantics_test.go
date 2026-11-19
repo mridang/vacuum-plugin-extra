@@ -252,6 +252,34 @@ paths:
 `), nil, "$.paths['/full/{id}'].put.responses")
 	})
 
+	t.Run("accepts any PUT 204 when allowPutNoContent is set", func(t *testing.T) {
+		t.Parallel()
+
+		doc := ruletest.Doc30(`
+paths:
+  /minimal/{id}:
+    get:
+      responses:
+        "204":
+          description: none
+    put:
+      responses:
+        "204":
+          description: updated
+  /full/{id}:
+    get:
+      responses:
+        "200":
+          description: ok
+    put:
+      responses:
+        "204":
+          description: updated
+`)
+		ruletest.RequirePaths(t, rule, doc, nil, "$.paths['/full/{id}'].put.responses")
+		ruletest.RequireClean(t, rule, doc, ruletest.Options{"allowPutNoContent": true})
+	})
+
 	t.Run("ignores operations that only define range or default responses", func(t *testing.T) {
 		t.Parallel()
 

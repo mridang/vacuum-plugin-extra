@@ -1697,7 +1697,8 @@ rules:
     type: style
     then:
       function: extra-response-status-code-semantics
-      functionOptions: {}
+      functionOptions:
+        allowPutNoContent: false
   extra-schema-description-required:
     description: Schemas must have a description.
     message: "{{error}}"
