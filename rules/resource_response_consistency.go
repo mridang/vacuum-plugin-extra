@@ -50,6 +50,23 @@ const (
 // type object, for example
 // paths['/things'].post.responses['201'].content['application/json'].
 //
+// A create or update response may extend the GET schema instead of repeating
+// it, for example to hand out a value that is only returned once. A response
+// schema that differs from the canonical one is still accepted in any of three
+// forms:
+//
+//   - an allOf that includes the GET schema, directly or through a composed
+//     schema that resolves to it, compared by $ref target after resolution;
+//   - an envelope object with a property whose schema is, or extends, the GET
+//     schema, for example {session: <GET schema>, session_token: string};
+//   - an object whose property names are a superset of the GET properties,
+//     where each shared property has the same type name (its $ref name, or
+//     its type keyword); the types are not compared any deeper. A GET property
+//     marked writeOnly is never returned, so it is not expected in the superset.
+//
+// A response that matches none of these forms, such as one that only carries
+// an id, is reported.
+//
 // A PUT on a path whose GET returns a $ref schema named *Collection is a bulk
 // operation and gets the message "Bulk resource operations should return the
 // resource collection schema: Name"; everything else gets "Operations on a
@@ -111,13 +128,14 @@ const (
 // # Known false positives / limitations
 //
 // The comparison is structural and exact, as in IBM: two schemas that describe
-// the same data in different ways are reported. Only local $ref values are
-// resolved, and the schema name in the message is the last segment of the $ref
-// held directly by the GET media type.
+// the same data in different ways are reported, except for the three extension
+// forms above. Only local $ref values are resolved, composition is followed
+// through allOf only, and the schema name in the message is the last segment
+// of the $ref held directly by the GET media type.
 func ResourceResponseConsistency() Rule {
 	return New(Spec{
 		Name:        "resource-response-consistency",
-		Description: "Create and update operations must return the same schema as the GET of the resource.",
+		Description: "Create and update operations must return the same schema as the GET of the resource, or an extension of it.",
 		HowToFix:    "Return the schema that the GET operation of the resource returns.",
 		Severity:    model.SeverityWarn,
 		Given:       "$",
@@ -302,7 +320,8 @@ func resourceResponseConsistencyCompare(
 
 				return When(
 					schema != nil && resourceResponseConsistencyJSON(name.Value) &&
-						resourceResponseConsistencyCanon(root, schema, 0, nil) != want,
+						resourceResponseConsistencyCanon(root, schema, 0, nil) != want &&
+						!resourceResponseConsistencyExtends(root, schema, target, want),
 					func() Finding {
 						return Finding{Node: media, Path: oas.Join(base, name.Value), Message: message}
 					},
@@ -310,6 +329,94 @@ func resourceResponseConsistencyCompare(
 			})
 		},
 	)
+}
+
+// resourceResponseConsistencyExtends reports whether a write response schema extends the GET schema in
+// one of the accepted forms: an allOf that includes it, an envelope holding it, or a property superset.
+func resourceResponseConsistencyExtends(
+	root, schema *yaml.Node,
+	target *resourceResponseConsistencyTarget,
+	want string,
+) bool {
+	return resourceResponseConsistencyIncludes(root, schema, want, 0, nil) ||
+		resourceResponseConsistencyEnvelope(root, schema, want) ||
+		resourceResponseConsistencySuperset(root, schema, target.schema)
+}
+
+// resourceResponseConsistencyIncludes reports whether the schema equals the canonical schema want, or
+// composes it through allOf, directly or through nested composed schemas.
+func resourceResponseConsistencyIncludes(
+	root, node *yaml.Node,
+	want string,
+	depth int,
+	ancestors []*yaml.Node,
+) bool {
+	resolved := oas.Resolve(root, node)
+	if resolved == nil || depth > resourceResponseConsistencyMaxDepth || slices.Contains(ancestors, resolved) {
+		return false
+	}
+
+	if resourceResponseConsistencyCanon(root, resolved, 0, nil) == want {
+		return true
+	}
+
+	path := slices.Concat(ancestors, []*yaml.Node{resolved})
+
+	for _, item := range oas.Items(oas.Get(resolved, "allOf")) {
+		if resourceResponseConsistencyIncludes(root, item, want, depth+1, path) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// resourceResponseConsistencyEnvelope reports whether an object schema has a property that is, or
+// extends, the canonical schema want.
+func resourceResponseConsistencyEnvelope(root, schema *yaml.Node, want string) bool {
+	properties := oas.Get(oas.Resolve(root, schema), "properties")
+
+	for _, property := range oas.Pairs(properties) {
+		if resourceResponseConsistencyIncludes(root, property, want, 0, nil) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// resourceResponseConsistencySuperset reports whether the schema defines every property name of the GET
+// object, each with the same type name.
+func resourceResponseConsistencySuperset(root, schema, get *yaml.Node) bool {
+	wanted := oas.Get(get, "properties")
+	if len(oas.Keys(wanted)) == 0 {
+		return false
+	}
+
+	have := oas.Get(oas.Resolve(root, schema), "properties")
+
+	for key, expected := range oas.Pairs(wanted) {
+		if oas.Marked(root, expected, "writeOnly") {
+			continue
+		}
+
+		actual := oas.Get(have, key.Value)
+		if actual == nil ||
+			resourceResponseConsistencyTypeName(actual) != resourceResponseConsistencyTypeName(expected) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// resourceResponseConsistencyTypeName names a property schema by its $ref name, or else by its type keyword.
+func resourceResponseConsistencyTypeName(node *yaml.Node) string {
+	if ref := oas.Ref(node); ref != "" {
+		return oas.RefName(ref)
+	}
+
+	return oas.StringAt(node, "type")
 }
 
 // resourceResponseConsistencyMessage builds the finding message for the target.
