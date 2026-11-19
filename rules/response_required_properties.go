@@ -22,6 +22,9 @@ const (
 const (
 	responseRequiredPropertiesArrays = "arrays"
 	responseRequiredPropertiesEnums  = "enums"
+
+	responseRequiredPropertiesIgnoreWithDefault = "ignoreWithDefault"
+	responseRequiredPropertiesDefault           = "default"
 )
 
 // ResponseRequiredProperties returns the extra-response-required-properties rule.
@@ -53,6 +56,9 @@ const (
 //
 //   - arrays (bool, default true): require array properties.
 //   - enums (bool, default true): require enumeration properties.
+//   - ignoreWithDefault (bool, default false): do not require a property that
+//     declares a default, because its absence has a defined meaning. The
+//     default is read through $ref.
 //
 // # Bad
 //
@@ -102,6 +108,11 @@ func ResponseRequiredProperties() Rule {
 		Options: []Option{
 			{Name: responseRequiredPropertiesArrays, Description: "Require array properties.", Default: true},
 			{Name: responseRequiredPropertiesEnums, Description: "Require enum properties.", Default: true},
+			{
+				Name:        responseRequiredPropertiesIgnoreWithDefault,
+				Description: "Do not require a property that declares a default.",
+				Default:     false,
+			},
 		},
 		Check: OnDocument(checkResponseRequiredProperties),
 	})
@@ -284,6 +295,8 @@ type responseRequiredPropertiesWalker struct {
 	root   *yaml.Node
 	arrays bool
 	enums  bool
+
+	ignoreWithDefault bool
 }
 
 // checkResponseRequiredProperties walks every response schema.
@@ -293,6 +306,8 @@ func checkResponseRequiredProperties(call *Call) []Finding {
 		root:   call.Root,
 		arrays: call.Bool(responseRequiredPropertiesArrays),
 		enums:  call.Bool(responseRequiredPropertiesEnums),
+
+		ignoreWithDefault: call.Bool(responseRequiredPropertiesIgnoreWithDefault),
 	}
 	empty := responseRequiredPropertiesState{
 		visited: responseRequiredPropertiesSet[*yaml.Node]{
@@ -451,6 +466,10 @@ func (w responseRequiredPropertiesWalker) properties(
 			target, _ := w.follow(property.value, path)
 			kind := w.kind(target)
 			if oas.Marked(w.root, property.value, "writeOnly") {
+				kind = ""
+			}
+
+			if w.ignoreWithDefault && oas.Has(target, responseRequiredPropertiesDefault) {
 				kind = ""
 			}
 

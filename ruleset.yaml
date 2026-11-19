@@ -1688,6 +1688,7 @@ rules:
       functionOptions:
         arrays: true
         enums: true
+        ignoreWithDefault: false
   extra-response-status-code-semantics:
     description: Operations must use status codes consistently with their meaning.
     message: "{{error}}"
