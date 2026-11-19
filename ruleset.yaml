@@ -2148,6 +2148,7 @@ rules:
       function: extra-well-defined-dictionaries
       functionOptions:
         allowEmptyObjects: false
+        allowOpenModels: false
         forbidNestedDictionaries: true
         requireObjectDefinition: true
         requireValueType: true
