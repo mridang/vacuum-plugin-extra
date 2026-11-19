@@ -235,6 +235,14 @@ func lint(opts options) ([]Finding, error) {
 		return nil, fmt.Errorf("read spec: %w", err)
 	}
 
+	base := ""
+	if hasFileRefs(spec) {
+		base, err = specDir(opts.spec)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	spec, err = bundleExternalRefs(spec, opts.spec)
 	if err != nil {
 		return nil, err
@@ -252,6 +260,7 @@ func lint(opts options) ([]Finding, error) {
 		RuleSet:           set,
 		Spec:              spec,
 		SpecFileName:      opts.spec,
+		Base:              base,
 		CustomFunctions:   extra.Functions(),
 		SilenceLogs:       true,
 		SkipDocumentCheck: true,
