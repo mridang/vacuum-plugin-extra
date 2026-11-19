@@ -1,6 +1,8 @@
 package rules
 
 import (
+	"slices"
+
 	"github.com/daveshanley/vacuum/model"
 	"github.com/pb33f/go-yaml"
 
@@ -11,6 +13,9 @@ import (
 
 // enumValueCaseStrTag is the YAML tag of string scalars.
 const enumValueCaseStrTag = "!!str"
+
+// enumValueCaseAllowValues is the option listing the enum values accepted whatever the casing.
+const enumValueCaseAllowValues = "allowValues"
 
 // EnumValueCase returns the extra-enum-value-case rule.
 //
@@ -43,6 +48,10 @@ const enumValueCaseStrTag = "!!str"
 //     SCREAMING-KEBAB-CASE, dot.case or lowercase. A value is accepted when it follows
 //     any listed convention, an empty list disables the rule and an unknown
 //     value is reported.
+//   - allowValues (list of strings, default []): enum values accepted whatever
+//     the configured casing, matched exactly and case-sensitively, for values
+//     fixed by a standard or a stored identifier such as public-key or
+//     date-time. An unlisted value in the same casing is still reported.
 //
 // # Bad
 //
@@ -63,8 +72,8 @@ const enumValueCaseStrTag = "!!str"
 // # Known false positives / limitations
 //
 // Enums whose values are fixed by an external standard (media types, country
-// codes, HTTP methods) are reported even though they cannot be renamed. Suppress
-// the rule for those schemas.
+// codes, HTTP methods) are reported even though they cannot be renamed. List
+// those values in allowValues.
 func EnumValueCase() Rule {
 	return New(Spec{
 		Name:        "enum-value-case",
@@ -75,17 +84,26 @@ func EnumValueCase() Rule {
 		Type:        TypeStyle,
 		Options: []Option{
 			casingOption("Case conventions of the enum values", casing.Snake, casing.ScreamingSnake),
+			{
+				Name: enumValueCaseAllowValues,
+				Description: "Enum values accepted whatever the casing, matched exactly, " +
+					"for values fixed by a standard or a stored identifier.",
+				Default: []string{},
+			},
 		},
 		Check: WithCasing(checkEnumValueCase),
 	})
 }
 
 func checkEnumValueCase(call *Call, allowed casing.Set) []Finding {
+	exempt := slices.Collect(slices.Values(call.Strings(enumValueCaseAllowValues)))
+
 	return PerSchema(func(_ *Call, schema oas.Schema) []Finding {
 		enumPath := oas.Join(schema.Path, "enum")
 
 		return seq.FlatMapPairs(oas.Items(oas.Get(schema.Node, "enum")), func(i int, value *yaml.Node) []Finding {
-			invalid := enumValueCaseIsString(value) && !allowed.Matches(value.Value)
+			invalid := enumValueCaseIsString(value) && !allowed.Matches(value.Value) &&
+				!slices.Contains(exempt, value.Value)
 
 			return When(invalid, func() Finding {
 				return Finding{

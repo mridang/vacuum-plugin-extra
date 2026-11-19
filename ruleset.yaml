@@ -458,6 +458,7 @@ rules:
     then:
       function: extra-enum-value-case
       functionOptions:
+        allowValues: []
         casing:
           - snake_case
           - SCREAMING_SNAKE_CASE
