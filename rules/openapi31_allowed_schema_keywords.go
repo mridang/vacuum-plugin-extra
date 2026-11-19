@@ -98,7 +98,7 @@ func Openapi31AllowedSchemaKeywords() Rule {
 
 func openapi31AllowedSchemaKeywordsIBM() []string {
 	return []string{
-		"$ref",
+		strictRefLocationsRef,
 		openapi31AllowedSchemaKeywordsAdditional,
 		"allOf",
 		keywordAnyOf,

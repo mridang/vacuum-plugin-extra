@@ -131,7 +131,7 @@ func discriminatorPropertyRequiredListedWithin(root, schema *yaml.Node, property
 		}
 	}
 
-	for _, keyword := range []string{"oneOf", "anyOf"} {
+	for _, keyword := range []string{literalOneof, keywordAnyOf} {
 		if discriminatorPropertyRequiredAllMembers(root, oas.Get(schema, keyword), property, depth) {
 			return true
 		}

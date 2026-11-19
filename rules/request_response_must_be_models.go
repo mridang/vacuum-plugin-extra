@@ -159,7 +159,7 @@ func requestResponseMustBeModelsContent(root, content *yaml.Node, path string, a
 		violation := requestResponseMustBeModelsIsJSON(media.Name) && oas.IsMap(schema) &&
 			requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsIsObject, 0) &&
 			!requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsDefinesProps, 0) &&
-			!(allowDictionaries && requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsIsTypedDictionary, 0))
+			(!allowDictionaries || !requestResponseMustBeModelsHas(root, schema, requestResponseMustBeModelsIsTypedDictionary, 0))
 
 		return When(violation, func() Finding {
 			return Finding{
@@ -199,7 +199,13 @@ func requestResponseMustBeModelsIsObject(schema *yaml.Node) bool {
 // has an additionalProperties schema that declares a value type.
 func requestResponseMustBeModelsIsTypedDictionary(schema *yaml.Node) bool {
 	additional := oas.Get(schema, "additionalProperties")
-	valueTypeKeys := []string{"type", "$ref", requestResponseMustBeModelsAllOf, requestResponseMustBeModelsAnyOf, "oneOf"}
+	valueTypeKeys := []string{
+		"type",
+		strictRefLocationsRef,
+		requestResponseMustBeModelsAllOf,
+		requestResponseMustBeModelsAnyOf,
+		literalOneof,
+	}
 
 	return oas.IsMap(additional) && slices.ContainsFunc(valueTypeKeys, func(key string) bool {
 		return oas.Has(additional, key)
