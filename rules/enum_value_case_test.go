@@ -133,8 +133,9 @@ components:
 			"$.components.schemas.Credential.enum[0]", "$.components.schemas.Credential.enum[1]",
 			"$.components.schemas.Credential.enum[2]", "$.components.schemas.Credential.enum[3]",
 			"$.components.schemas.Credential.enum[4]")
-		ruletest.RequirePaths(t, rule, document,
-			ruletest.Options{"allowValues": []string{"public-key", "cross-platform", "date-time", "auth.factor.password.set"}},
+		listed := []string{"public-key", "cross-platform", "date-time", "auth.factor.password.set"}
+
+		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowValues": listed},
 			"$.components.schemas.Credential.enum[4]")
 		ruletest.RequirePaths(t, rule, document, ruletest.Options{"allowValues": []string{}},
 			"$.components.schemas.Credential.enum[0]", "$.components.schemas.Credential.enum[1]",
