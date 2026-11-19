@@ -2146,6 +2146,7 @@ rules:
     then:
       function: extra-well-defined-dictionaries
       functionOptions:
+        allowEmptyObjects: false
         forbidNestedDictionaries: true
         requireObjectDefinition: true
         requireValueType: true

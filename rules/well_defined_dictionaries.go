@@ -22,6 +22,8 @@ const (
 	wellDefinedDictionariesValueType     = "requireValueType"
 	wellDefinedDictionariesNested        = "forbidNestedDictionaries"
 	wellDefinedDictionariesDefinition    = "requireObjectDefinition"
+	wellDefinedDictionariesEmptyObjects  = "allowEmptyObjects"
+	wellDefinedDictionariesFalse         = "false"
 	wellDefinedDictionariesMaxDepth      = 32
 	wellDefinedDictionariesBoolTag       = "!!bool"
 	wellDefinedDictionariesNullTag       = "!!null"
@@ -47,7 +49,8 @@ const (
 //   - a schema that is not a dictionary and defines no properties is reported
 //     ("Object schemas must define either properties, or
 //     (additional/pattern)Properties with a concrete type"), controlled by
-//     requireObjectDefinition;
+//     requireObjectDefinition, unless allowEmptyObjects accepts it as an
+//     intentionally empty object;
 //   - a dictionary (additionalProperties other than false, or
 //     patternProperties) that also defines properties is reported ("they cannot
 //     be both");
@@ -81,6 +84,9 @@ const (
 //     values are dictionaries.
 //   - requireObjectDefinition (bool, default true): report object schemas that
 //     define neither properties nor a dictionary.
+//   - allowEmptyObjects (bool, default false): accept an object with no
+//     properties when additionalProperties is exactly false or maxProperties is
+//     0. For oneOf and anyOf every member must be such an object.
 //
 // # Bad
 //
@@ -128,6 +134,11 @@ func WellDefinedDictionaries() Rule {
 				Name:        wellDefinedDictionariesDefinition,
 				Description: "Report object schemas that define neither properties nor a dictionary.",
 				Default:     true,
+			},
+			{
+				Name:        wellDefinedDictionariesEmptyObjects,
+				Description: "Accept an object with no properties when additionalProperties is false or maxProperties is 0.",
+				Default:     false,
 			},
 		},
 		Check: OnDocument(checkWellDefinedDictionaries),
@@ -213,7 +224,10 @@ func wellDefinedDictionariesCheck(call *Call, schema oas.Schema) []Finding {
 	both := wellDefinedDictionariesDefines(root, schema.Node, literalProperties)
 
 	if !wellDefinedDictionariesDictionary(root, schema.Node) {
-		return When(call.Bool(wellDefinedDictionariesDefinition) && !both, func() Finding {
+		intentional := call.Bool(wellDefinedDictionariesEmptyObjects) &&
+			wellDefinedDictionariesHas(root, schema.Node, wellDefinedDictionariesIntentionallyEmpty, 0)
+
+		return When(call.Bool(wellDefinedDictionariesDefinition) && !both && !intentional, func() Finding {
 			return report(wellDefinedDictionariesMsgNone)
 		})
 	}
@@ -251,6 +265,16 @@ func wellDefinedDictionariesIsObject(schema *yaml.Node) bool {
 		oas.IsMap(additional) ||
 		(oas.IsScalar(additional) && additional.Tag == wellDefinedDictionariesBoolTag && oas.IsTrue(additional)) ||
 		oas.IsMap(oas.Get(schema, literalPatternproperties))
+}
+
+// wellDefinedDictionariesIntentionallyEmpty reports an object schema that is closed or capped at zero properties.
+func wellDefinedDictionariesIntentionallyEmpty(schema *yaml.Node) bool {
+	additional := oas.Get(schema, wellDefinedDictionariesAdditional)
+	closed := oas.IsScalar(additional) && additional.Tag == wellDefinedDictionariesBoolTag &&
+		additional.Value == wellDefinedDictionariesFalse
+	maxProperties, ok := oas.Int(oas.Get(schema, keywordMaxProperties))
+
+	return closed || (ok && maxProperties == 0)
 }
 
 // wellDefinedDictionariesDictionary reports whether the schema defines additionalProperties or patternProperties.
